@@ -52,3 +52,63 @@ export interface AnalysisResult {
   summary: string
   indicators: string[]
 }
+
+export interface EvidenceItem {
+  id: string
+  source_type: string
+  source_name: string
+  source_url: string
+  retrieved_at: string
+  published_at?: string | null
+  author?: string | null
+  title: string
+  text: string
+  confidence: number
+  evidence_type: string
+}
+
+export interface SourceStatus {
+  source_type: string
+  source_name: string
+  status: 'completed' | 'limited' | 'unavailable' | 'failed'
+  count: number
+  duration_ms: number
+  warning_or_error?: string | null
+}
+
+export interface InvestigationStage {
+  stage_id: string
+  stage_name: string
+  status: string
+  duration_ms: number
+  source_count: number
+  evidence_count: number
+  detail: string
+}
+
+export interface KeyFinding {
+  title: string
+  explanation: string
+  source: string
+  confidence: number
+}
+
+export interface InvestigationResult {
+  query: string
+  query_mode: string
+  timestamp: string
+  stages: InvestigationStage[]
+  source_statuses: SourceStatus[]
+  evidence: EvidenceItem[]
+  threat_score: number
+  risk_level: ThreatLevel
+  confidence: number
+  narrative_category: string
+  key_findings: KeyFinding[]
+  graph: {
+    nodes: GraphNode[]
+    edges: GraphEdge[]
+  }
+  synthesis_dossier: string
+}
+

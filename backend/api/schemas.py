@@ -133,3 +133,58 @@ class LanguageDetectRequest(BaseModel):
 class LanguageDetectResponse(BaseModel):
     language: str
     confidence: float
+
+
+class InvestigateRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    mode: str = "topic"  # 'topic' | 'text' | 'handle' | 'url' | 'image_url'
+
+
+class EvidenceSchema(BaseModel):
+    id: str
+    source_type: str
+    source_name: str
+    source_url: str
+    retrieved_at: str
+    published_at: str | None = None
+    author: str | None = None
+    title: str
+    text: str
+    confidence: float
+    evidence_type: str
+
+
+class SourceStatusSchema(BaseModel):
+    source_type: str
+    source_name: str
+    status: str
+    count: int
+    duration_ms: int
+    warning_or_error: str | None = None
+
+
+class InvestigationStageSchema(BaseModel):
+    stage_id: str
+    stage_name: str
+    status: str
+    duration_ms: int
+    source_count: int
+    evidence_count: int
+    detail: str
+
+
+class InvestigateResponse(BaseModel):
+    query: str
+    query_mode: str
+    timestamp: str
+    stages: list[InvestigationStageSchema]
+    source_statuses: list[SourceStatusSchema]
+    evidence: list[EvidenceSchema]
+    threat_score: int
+    risk_level: str
+    confidence: float
+    narrative_category: str
+    key_findings: list[dict[str, Any]]
+    graph: dict[str, Any]
+    synthesis_dossier: str
+

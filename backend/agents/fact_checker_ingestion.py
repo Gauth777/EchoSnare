@@ -5,7 +5,12 @@ import re
 import urllib.request
 from typing import Dict, List
 
-import feedparser
+try:
+    import feedparser
+except ImportError:
+    feedparser = None
+
+import xml.etree.ElementTree as ET
 
 FACT_CHECKER_FEEDS = [
     {"name": "AltNews",     "url": "https://www.altnews.in/feed/",                "color": "red"},
@@ -23,13 +28,35 @@ def _clean(html: str) -> str:
     return _TAG_RE.sub("", html or "").strip()
 
 
-def _fetch_feed(url: str):
-    # feedparser.parse(url) has no timeout and can hang the request thread on a
-    # slow feed; fetch with urllib (timeout + explicit UA, some feeds block the
-    # default one) and parse the bytes instead.
+def _fetch_entries(url: str) -> List[Dict[str, str]]:
     req = urllib.request.Request(url, headers={"User-Agent": "ShadowTrace/1.0 (+fact-check monitor)"})
     with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT_SECONDS) as resp:
-        return feedparser.parse(resp.read())
+        raw = resp.read()
+
+    entries = []
+    if feedparser is not None:
+        parsed = feedparser.parse(raw)
+        for entry in parsed.entries[:5]:
+            entries.append({
+                "title": entry.get("title", ""),
+                "summary": entry.get("summary", ""),
+                "link": entry.get("link", ""),
+                "published": entry.get("published", ""),
+            })
+    else:
+        root = ET.fromstring(raw)
+        for item in root.findall(".//item")[:5]:
+            t = item.find("title")
+            s = item.find("description")
+            l = item.find("link")
+            p = item.find("pubDate")
+            entries.append({
+                "title": t.text if t is not None else "",
+                "summary": s.text if s is not None else "",
+                "link": l.text if l is not None else "",
+                "published": p.text if p is not None else "",
+            })
+    return entries
 
 
 def fetch_live_claims() -> List[Dict]:
@@ -41,8 +68,8 @@ def fetch_live_claims() -> List[Dict]:
     claims = []
     for feed_source in FACT_CHECKER_FEEDS:
         try:
-            feed = _fetch_feed(feed_source["url"])
-            for entry in feed.entries[:5]:  # last 5 per source
+            entries = _fetch_entries(feed_source["url"])
+            for entry in entries:
                 claim = {
                     "id": hashlib.md5(entry.get("link", "").encode()).hexdigest()[:8],
                     "title": _clean(entry.get("title", "")),
@@ -61,3 +88,4 @@ def fetch_live_claims() -> List[Dict]:
             print(f"Failed to fetch {feed_source['name']}: {e}")
             continue
     return claims
+

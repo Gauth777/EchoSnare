@@ -1,193 +1,177 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import type { AnalysisResult } from '@/types'
+import { useState } from 'react'
+import type { InvestigationResult } from '@/types'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
+const BORDER = '1px solid #1E2D4A'
 
-const QUICK_TESTS = [
-  { label: 'Election claim', text: 'BREAKING: Election Commission official confirms voting dates secretly changed in 4 Maharashtra districts. EVM machines in 847 polling booths pre-programmed with results. Statement suppressed by media. RT before deleted.' },
-  { label: 'Vaccine misinfo', text: 'URGENT: WHO internal data shows 1 in 50 recipients develop autoimmune syndrome from COVID boosters. Government hiding this. Share before deleted.' },
-  { label: 'Fake review', text: 'WOW Amazing product!!! Bought TechPro X200 and it is BEST in world!! Very fast ship 5 stars. 100% recommend everyone buy now!!' },
-  { label: 'WhatsApp forward', text: 'FWD: Doctors confirm nimbu paani cures cancer. Government hiding this. Share karo!' },
+const TOPIC_PRESETS = [
+  { label: 'Delhi strike today', query: 'Delhi strike today', type: 'topic' },
+  { label: 'Samay Raina controversy', query: 'Samay Raina controversy', type: 'topic' },
+  { label: 'EVM voting hack claim', query: 'EVM voting hack claim', type: 'topic' },
+  { label: 'Bluesky Handle', query: 'jay.bsky.social', type: 'handle' },
+  { label: 'WhatsApp Forward', query: 'FWD: WHO internal report confirms nimbu paani cures cancer! Share before deleted.', type: 'text' },
 ]
 
-const SEVERITY: Record<string, { label: string; color: string }> = {
-  HIGH: { label: 'HIGH', color: '#FF5A67' },
-  MED: { label: 'MEDIUM', color: '#FFC14D' },
-  LOW: { label: 'LOW', color: '#34D399' },
+interface Props {
+  onInvestigationComplete?: (data: InvestigationResult) => void
 }
 
-function scoreColor(score: number) {
-  if (score < 40) return '#34D399'
-  if (score < 70) return '#FFC14D'
-  return '#FF5A67'
-}
-
-function matchedCampaign(category: string) {
-  const value = category.toLowerCase()
-  if (/election|vot|evm|politi|democrat/.test(value)) return 'Operation Pulse'
-  if (/health|vaccine|medical|who|pharma|covid|immun/.test(value)) return 'MedFear'
-  if (/review|product|consumer|rating|commercial|shop/.test(value)) return 'ReviewStorm'
-  return null
-}
-
-export default function AnalyzePanel() {
-  const [expanded, setExpanded] = useState(true)
-  const [content, setContent] = useState('')
+export default function AnalyzePanel({ onInvestigationComplete }: Props) {
+  const [query, setQuery] = useState('')
+  const [mode, setMode] = useState<'topic' | 'text'>('topic')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [displayText, setDisplayText] = useState('')
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  useEffect(() => () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-  }, [])
+  async function handleInvestigate(selectedQuery?: string) {
+    const q = selectedQuery || query
+    if (!q.trim() || loading) return
 
-  function typeSummary(text: string) {
-    if (timerRef.current) clearInterval(timerRef.current)
-    let index = 0
-    setDisplayText('')
-    timerRef.current = setInterval(() => {
-      index += 1
-      setDisplayText(text.slice(0, index))
-      if (index >= text.length && timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-    }, 12)
-  }
-
-  async function handleAnalyze() {
-    if (!content.trim() || loading) return
     setLoading(true)
     setError(null)
-    setResult(null)
-    setDisplayText('')
+
     try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }),
+      const response = await fetch('/api/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, mode }),
       })
-      if (!response.ok) throw new Error('request failed')
-      const data = (await response.json()) as AnalysisResult
-      setResult(data)
-      typeSummary(data.summary)
+
+      if (!response.ok) throw new Error('Investigation request failed')
+      const data = (await response.json()) as InvestigationResult
+      if (onInvestigationComplete) {
+        onInvestigationComplete(data)
+      }
     } catch {
-      setError('Analysis failed. Check API configuration and try again.')
+      setError('Investigation failed. Verify Python backend status and try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  function openNetwork(campaignName: string) {
-    window.dispatchEvent(new CustomEvent('shadowtrace:campaign-select', { detail: { campaignName } }))
-    document.getElementById('st-graph-section')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const confidence = result ? Math.round(result.confidence * 100) : 0
-  const severity = result ? SEVERITY[result.threat_level] ?? SEVERITY.LOW : null
-  const campaign = result ? matchedCampaign(result.narrative_category) : null
-
   return (
-    <section style={{ borderTop: '2px solid #00D4AA', borderBottom: BORDER }}>
-      <button
-        onClick={() => setExpanded(value => !value)}
-        style={{ ...MONO, width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', border: 0, borderBottom: expanded ? BORDER : 0, background: '#0F1A2B', color: '#F4F7FB', cursor: 'pointer', textAlign: 'left' }}
-      >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 10, fontWeight: 650, letterSpacing: '0.12em' }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00D4AA' }} />
-          ANALYZE CONTENT
-          <span style={{ fontSize: 8, color: '#00D4AA', border: '1px solid #1F8F7B', padding: '3px 7px', letterSpacing: '0.08em' }}>AI PIPELINE</span>
-        </span>
-        <span style={{ fontSize: 17, color: '#00D4AA' }}>{expanded ? '−' : '+'}</span>
-      </button>
+    <section style={{ borderTop: '3px solid #00D4AA', borderBottom: BORDER, background: '#0F1A2B' }}>
+      <div style={{ padding: '20px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 10px #00D4AA' }} />
+            <span style={{ ...MONO, fontSize: 11, fontWeight: 700, color: '#F4F7FB', letterSpacing: '0.14em' }}>
+              WHAT DO YOU WANT TO INVESTIGATE?
+            </span>
+          </div>
 
-      {expanded && (
-        <div style={{ display: 'grid', gridTemplateColumns: '44% 56%', background: '#101A2C' }}>
-          <div style={{ padding: 18, borderRight: BORDER }}>
-            <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.1em', marginBottom: 8 }}>INPUT SIGNAL</div>
-            <textarea
-              value={content}
-              onChange={event => setContent(event.target.value)}
-              placeholder="Paste a social post, news claim, or article excerpt…"
-              rows={7}
-              style={{ ...MONO, width: '100%', boxSizing: 'border-box', resize: 'vertical', background: '#0A1321', color: '#F4F7FB', border: '1px solid #324B6E', outline: 'none', padding: '12px 13px', fontSize: 12, lineHeight: 1.55 }}
-            />
-            <div style={{ ...MONO, display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-              {QUICK_TESTS.map(test => (
-                <button key={test.label} onClick={() => setContent(test.text)} style={{ ...MONO, border: '1px solid #304866', background: '#142239', color: '#B9C7D9', padding: '6px 8px', fontSize: 9, cursor: 'pointer' }}>{test.label}</button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={handleAnalyze}
-              disabled={loading || !content.trim()}
-              style={{ ...MONO, width: '100%', marginTop: 10, padding: '11px 12px', border: 0, background: loading || !content.trim() ? '#22324A' : '#00D4AA', color: loading || !content.trim() ? '#7D8EA7' : '#07131F', fontWeight: 750, fontSize: 10, letterSpacing: '0.12em', cursor: loading || !content.trim() ? 'not-allowed' : 'pointer' }}
+              onClick={() => setMode('topic')}
+              style={{
+                ...MONO,
+                padding: '5px 10px',
+                fontSize: 10,
+                fontWeight: 650,
+                border: mode === 'topic' ? '1px solid #00D4AA' : '1px solid #263957',
+                background: mode === 'topic' ? '#122B3F' : '#091220',
+                color: mode === 'topic' ? '#00D4AA' : '#8798B1',
+                cursor: 'pointer',
+              }}
             >
-              {loading ? 'RUNNING MULTI-AGENT ANALYSIS…' : 'RUN INVESTIGATION →'}
+              INVESTIGATE TOPIC / CLAIM
+            </button>
+            <button
+              onClick={() => setMode('text')}
+              style={{
+                ...MONO,
+                padding: '5px 10px',
+                fontSize: 10,
+                fontWeight: 650,
+                border: mode === 'text' ? '1px solid #00D4AA' : '1px solid #263957',
+                background: mode === 'text' ? '#122B3F' : '#091220',
+                color: mode === 'text' ? '#00D4AA' : '#8798B1',
+                cursor: 'pointer',
+              }}
+            >
+              ANALYZE DIRECT TEXT
             </button>
           </div>
-
-          <div style={{ padding: 18, minWidth: 0 }}>
-            {!result && !loading && !error && (
-              <div style={{ padding: '8px 0' }}>
-                <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.1em', marginBottom: 10 }}>ANALYSIS OUTPUT</div>
-                <div style={{ fontSize: 13, lineHeight: 1.65, color: '#B8C4D6', maxWidth: 560 }}>
-                  Submit a signal to run the analysis pipeline. The result panel will surface confidence, threat level, detected indicators, and the matched campaign context.
-                </div>
-              </div>
-            )}
-
-            {loading && <div style={{ ...MONO, color: '#B8C4D6', fontSize: 11, lineHeight: 1.6, paddingTop: 8 }}>Running language, content, and threat analysis…</div>}
-            {error && <div style={{ ...MONO, color: '#FF7A85', fontSize: 11, paddingTop: 8 }}>{error}</div>}
-
-            {result && severity && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 18, alignItems: 'end' }}>
-                  <div>
-                    <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.1em', marginBottom: 8 }}>MODEL CONFIDENCE</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                      <span style={{ ...MONO, fontSize: 34, fontWeight: 750, color: scoreColor(confidence) }}>{confidence}%</span>
-                      <span style={{ ...MONO, fontSize: 10, color: '#7F90A9' }}>confidence</span>
-                    </div>
-                  </div>
-                  <div style={{ ...MONO, fontSize: 10, fontWeight: 750, color: severity.color, border: `1px solid ${severity.color}`, padding: '6px 9px', letterSpacing: '0.08em' }}>{severity.label} RISK</div>
-                </div>
-
-                <div style={{ height: 8, background: '#0B1524', border: '1px solid #304866' }}>
-                  <div style={{ height: '100%', width: `${confidence}%`, background: scoreColor(confidence) }} />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div style={{ border: BORDER, background: '#0C1727', padding: 13 }}>
-                    <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.08em', marginBottom: 7 }}>NARRATIVE</div>
-                    <div style={{ fontSize: 12, color: '#D8E0EA', lineHeight: 1.5 }}>{result.narrative_category}</div>
-                  </div>
-                  <div style={{ border: BORDER, background: '#0C1727', padding: 13 }}>
-                    <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.08em', marginBottom: 7 }}>INDICATORS</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {(result.indicators ?? []).slice(0, 6).map((item, index) => <span key={index} style={{ ...MONO, fontSize: 9, color: '#B8C4D6', background: '#142239', border: '1px solid #304866', padding: '4px 6px' }}>{item}</span>)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ borderLeft: `2px solid ${severity.color}`, background: '#0C1727', padding: '12px 14px' }}>
-                  <div style={{ ...MONO, fontSize: 9, color: '#8798B1', letterSpacing: '0.08em', marginBottom: 7 }}>SYNTHESIS</div>
-                  <div style={{ fontSize: 12, lineHeight: 1.65, color: '#D8E0EA' }}>{displayText}</div>
-                </div>
-
-                {campaign && (
-                  <button onClick={() => openNetwork(campaign)} style={{ ...MONO, alignSelf: 'flex-start', border: '1px solid #00A889', background: 'rgba(0,212,170,0.08)', color: '#00D4AA', padding: '8px 10px', fontSize: 9, fontWeight: 650, letterSpacing: '0.08em', cursor: 'pointer' }}>
-                    OPEN {campaign.toUpperCase()} NETWORK →
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
         </div>
-      )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleInvestigate()}
+              placeholder={
+                mode === 'topic'
+                  ? 'Enter a topic, event, person, claim, handle (e.g. @jay.bsky.social), or URL…'
+                  : 'Paste exact social media text, forward excerpt, or claim to evaluate…'
+              }
+              style={{
+                ...MONO,
+                width: '100%',
+                boxSizing: 'border-box',
+                background: '#091322',
+                color: '#F4F7FB',
+                border: '1px solid #2C4263',
+                padding: '13px 16px',
+                fontSize: 13,
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <button
+            onClick={() => handleInvestigate()}
+            disabled={loading || !query.trim()}
+            style={{
+              ...MONO,
+              padding: '0 24px',
+              border: 0,
+              background: loading || !query.trim() ? '#203248' : '#00D4AA',
+              color: loading || !query.trim() ? '#6A7D96' : '#07131F',
+              fontWeight: 750,
+              fontSize: 11,
+              letterSpacing: '0.12em',
+              cursor: loading || !query.trim() ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {loading ? 'EXECUTING PIPELINE…' : 'START INVESTIGATION →'}
+          </button>
+        </div>
+
+        <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 9, color: '#64748B', letterSpacing: '0.08em' }}>QUICK PRESETS:</span>
+          {TOPIC_PRESETS.map(preset => (
+            <button
+              key={preset.label}
+              onClick={() => {
+                setQuery(preset.query)
+                setMode(preset.type as 'topic' | 'text')
+                handleInvestigate(preset.query)
+              }}
+              style={{
+                ...MONO,
+                border: '1px solid #20334E',
+                background: '#0D1829',
+                color: '#94A3B8',
+                padding: '4px 8px',
+                fontSize: 9,
+                cursor: 'pointer',
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div style={{ ...MONO, marginTop: 10, color: '#EF4444', fontSize: 11 }}>
+            ⚠️ {error}
+          </div>
+        )}
+      </div>
     </section>
   )
 }
-
-const BORDER = '1px solid #263957'

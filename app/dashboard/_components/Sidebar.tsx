@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { label: 'Reports', href: '/dashboard/reports' },
 ]
 
-const AGENTS = ['Content Analyzer', 'Network Mapper', 'Threat Classifier', 'Deepfake Detector']
+const AGENTS = ['Source Retriever', 'Content Analyzer', 'Network Mapper', 'Threat Classifier', 'Deepfake Detector']
 
 const MONO: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',

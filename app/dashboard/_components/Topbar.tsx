@@ -31,10 +31,10 @@ export default function Topbar() {
         <span style={{ color: '#344A68' }}>/</span>
         <span style={{ color: '#F4F7FB', letterSpacing: '0.08em', fontWeight: 600 }}>{viewName}</span>
       </div>
-      <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 16, fontSize: 9, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
-        <span style={{ color: '#34D399' }}>● SYSTEM LIVE</span>
-        <span style={{ color: '#9AAAC0' }}>3 ACTIVE CAMPAIGNS</span>
-        <span style={{ color: '#6F829E' }}>FABRIC NOMINAL</span>
+      <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 16, fontSize: 10, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#34D399', fontWeight: 600 }}>● PIPELINE OPERATIONAL</span>
+        <span style={{ color: '#CBD5E1' }}>BENCHMARK CAMPAIGNS: 3</span>
+        <span style={{ color: '#94A3B8' }}>SOURCE FABRIC: NOMINAL</span>
       </div>
     </header>
   )
