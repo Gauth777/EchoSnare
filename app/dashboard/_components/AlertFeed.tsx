@@ -111,7 +111,7 @@ export default function AlertFeed() {
   function exportEvidence() {
     const payload = {
       exported_at: new Date().toISOString(),
-      source:      'ShadowTrace v1.0.0',
+      source:      'EchoSnare v1.0.0',
       total:       alerts.length,
       alerts: alerts.map(({ id, severity, message, campaign, time }) => ({
         id, severity, message, campaign, timestamp: time,
@@ -121,7 +121,7 @@ export default function AlertFeed() {
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `shadowtrace-evidence-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `echosnare-evidence-${new Date().toISOString().slice(0, 10)}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -131,7 +131,7 @@ export default function AlertFeed() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* ── Panel header ─────────────────────────────────────────────────── */}
       <div
         style={{
           ...FONT,
@@ -140,10 +140,11 @@ export default function AlertFeed() {
           height:        '36px',
           flexShrink:    0,
           padding:       '0 16px',
-          borderBottom:  '1px solid #1E2D4A',
+          borderBottom:  '1px solid #162032',
+          background:    '#05070c',
           fontSize:      '10px',
           letterSpacing: '0.1em',
-          color:         '#4A5568',
+          color:         '#94A3B8',
           gap:           '8px',
         }}
       >
@@ -164,9 +165,9 @@ export default function AlertFeed() {
       </div>
 
       {/* ── Scrollable alert list ────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: '#07090e' }}>
         {isLoading && [...Array(5)].map((_, i) => (
-          <div key={i} style={{ padding: '10px 14px', borderBottom: '1px solid #1E2D4A' }}>
+          <div key={i} style={{ padding: '10px 14px', borderBottom: '1px solid #162032' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
               <div className="st-skeleton" style={{ width: '32px', height: '16px', animationDelay: `${i*0.1}s` }} />
               <div className="st-skeleton" style={{ flex: 1, height: '10px', animationDelay: `${i*0.1+0.05}s` }} />
@@ -182,8 +183,8 @@ export default function AlertFeed() {
             className={`st-alert-card sev-${alert.severity}${alert.isNew ? ' st-alert-new' : ''}`}
             style={{
               padding:         '10px 14px',
-              borderBottom:    '1px solid #1E2D4A',
-              backgroundColor: '#111D35',
+              borderBottom:    '1px solid #162032',
+              backgroundColor: '#04060a',
             }}
           >
             {/* Row 1: severity badge + campaign + timestamp */}
@@ -203,7 +204,7 @@ export default function AlertFeed() {
                   letterSpacing:   '0.08em',
                   padding:         '2px 6px',
                   backgroundColor: SEV_COLOR[alert.severity],
-                  color:           '#080E1A',
+                  color:           '#000000',
                   flexShrink:      0,
                 }}
               >
@@ -212,7 +213,7 @@ export default function AlertFeed() {
               <span
                 style={{
                   fontSize:     '10px',
-                  color:        '#8B9AB5',
+                  color:        '#CBD5E1',
                   flex:         1,
                   minWidth:     0,
                   overflow:     'hidden',
@@ -222,7 +223,7 @@ export default function AlertFeed() {
               >
                 {alert.campaign}
               </span>
-              <span style={{ fontSize: '9px', color: '#4A5568', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <span style={{ fontSize: '9px', color: '#94A3B8', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {alert.time}
               </span>
             </div>
@@ -240,7 +241,8 @@ export default function AlertFeed() {
         style={{
           flexShrink:  0,
           padding:     '12px 14px',
-          borderTop:   '1px solid #1E2D4A',
+          borderTop:   '1px solid #162032',
+          background:  '#05070c',
         }}
       >
         <button
@@ -254,7 +256,7 @@ export default function AlertFeed() {
             letterSpacing:   '0.1em',
             backgroundColor: 'transparent',
             color:           '#00D4AA',
-            border:          '1px solid #1E2D4A',
+            border:          '1px solid #162032',
             cursor:          'pointer',
           }}
         >

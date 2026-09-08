@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 interface Agent {
   number:      string
@@ -189,12 +189,14 @@ function AgentCard({ agent, idx }: { agent: Agent; idx: number }) {
   return (
     <div
       style={{
-        border:          `1px solid ${agent.color}`,
-        backgroundColor: '#111D35',
+        border:          '1px solid #162032',
+        borderTop:       `2px solid ${agent.color}`,
+        backgroundColor: '#07090e',
         padding:         '20px',
         display:         'flex',
         flexDirection:   'column',
         gap:             '14px',
+        borderRadius:    '4px',
       }}
     >
       {/* Number badge */}
@@ -207,12 +209,12 @@ function AgentCard({ agent, idx }: { agent: Agent; idx: number }) {
           letterSpacing: '0.12em',
         }}
       >
-        {agent.number}
+        AGENT {agent.number}
       </span>
 
       {/* Name + status */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ ...FONT, fontSize: '15px', fontWeight: 700, color: '#E2E8F0' }}>
+        <span style={{ ...FONT, fontSize: '15px', fontWeight: 700, color: '#F4F7FB' }}>
           {agent.name}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -227,20 +229,20 @@ function AgentCard({ agent, idx }: { agent: Agent; idx: number }) {
               flexShrink:      0,
             }}
           />
-          <span style={{ ...FONT, fontSize: '9px', color: statusColor, letterSpacing: '0.12em' }}>
+          <span style={{ ...FONT, fontSize: '9px', color: statusColor, letterSpacing: '0.12em', fontWeight: 600 }}>
             {agent.status}
           </span>
         </div>
       </div>
 
       {/* Description */}
-      <div style={{ ...FONT, fontSize: '11px', color: '#4A5568', lineHeight: 1.65 }}>
+      <div style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', lineHeight: 1.65 }}>
         {agent.description}
       </div>
 
       {/* Tasks processed */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.1em' }}>
+        <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.1em' }}>
           TASKS PROCESSED
         </span>
         <span style={{ ...FONT, fontSize: '22px', fontWeight: 700, color: agent.color, lineHeight: 1 }}>
@@ -258,20 +260,20 @@ function AgentCard({ agent, idx }: { agent: Agent; idx: number }) {
             marginBottom:   '6px',
           }}
         >
-          <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.08em' }}>
+          <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.08em' }}>
             AGENT LOAD
           </span>
-          <span style={{ ...FONT, fontSize: '10px', color: '#E2E8F0' }}>
+          <span style={{ ...FONT, fontSize: '10px', color: '#F4F7FB' }}>
             {`${agent.load}%`}
           </span>
         </div>
-        <div style={{ height: '4px', backgroundColor: '#0D1526', border: BORDER }}>
+        <div style={{ height: '5px', backgroundColor: '#04060a', border: BORDER, borderRadius: '2px', overflow: 'hidden' }}>
           <div
             style={{
               height:          '100%',
               width:           `${barWidth}%`,
               backgroundColor: agent.color,
-              opacity:         0.85,
+              opacity:         0.9,
               transition:      'width 0.9s ease',
             }}
           />
@@ -280,10 +282,10 @@ function AgentCard({ agent, idx }: { agent: Agent; idx: number }) {
 
       {/* Last active */}
       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: BORDER, paddingTop: '10px' }}>
-        <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.08em' }}>
+        <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.08em' }}>
           LAST ACTIVE
         </span>
-        <span style={{ ...FONT, fontSize: '10px', color: isOnline ? '#22C55E' : '#8B9AB5' }}>
+        <span style={{ ...FONT, fontSize: '10px', color: isOnline ? '#22C55E' : '#94A3B8' }}>
           {agent.lastActive}
         </span>
       </div>
@@ -304,11 +306,12 @@ function SystemStrip({ agents, live }: { agents: Agent[]; live: boolean }) {
         display:      'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
         borderBottom: BORDER,
+        backgroundColor: '#05070c',
       }}
     >
       {[
         { label: 'AGENTS ONLINE',       value: `${online} / ${total}`,      valueColor: '#22C55E' },
-        { label: 'TASKS THIS SESSION',  value: totalTasks.toLocaleString(), valueColor: '#E2E8F0' },
+        { label: 'TASKS THIS SESSION',  value: totalTasks.toLocaleString(), valueColor: '#F4F7FB' },
         { label: 'STATS SOURCE',        value: live ? 'LIVE' : 'OFFLINE',   valueColor: live ? '#22C55E' : '#F59E0B' },
         { label: 'SYSTEM STATUS',       value: 'NOMINAL',                   valueColor: '#22C55E' },
       ].map((cell, i) => (
@@ -319,7 +322,7 @@ function SystemStrip({ agents, live }: { agents: Agent[]; live: boolean }) {
             borderRight: i < 3 ? BORDER : 'none',
           }}
         >
-          <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.1em', marginBottom: '8px' }}>
             {cell.label}
           </div>
           <div style={{ ...FONT, fontSize: '28px', fontWeight: 700, color: cell.valueColor, lineHeight: 1 }}>
@@ -358,17 +361,17 @@ export default function AgentsPage() {
   }, [])
 
   return (
-    <div style={{ borderTop: BORDER }}>
+    <div style={{ borderTop: BORDER, backgroundColor: '#000000', minHeight: '100%' }}>
 
       {/* ── Summary strip ─────────────────────────────────────────────────── */}
       <SystemStrip agents={agents} live={live} />
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div style={{ padding: '24px 24px 0' }}>
-        <div style={{ ...FONT, fontSize: '18px', fontWeight: 700, color: '#E2E8F0', marginBottom: '4px' }}>
+        <div style={{ ...FONT, fontSize: '18px', fontWeight: 700, color: '#F4F7FB', marginBottom: '4px' }}>
           Agent Intelligence Network
         </div>
-        <div style={{ ...FONT, fontSize: '11px', color: '#4A5568' }}>
+        <div style={{ ...FONT, fontSize: '11px', color: '#94A3B8' }}>
           {agents.length} specialized AI agents operating in parallel — task counts are live from the backend
         </div>
       </div>

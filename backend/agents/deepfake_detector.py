@@ -28,7 +28,7 @@ class DeepfakeDetectionResult:
 
 def _download_image(image_url: str) -> tuple[Image.Image, bytes]:
     # Wikimedia and most CDNs reject the default python-requests user agent
-    headers = {"User-Agent": "ShadowTrace/1.0 (image forensics; contact: admin@shadowtrace.app)"}
+    headers = {"User-Agent": "EchoSnare/1.0 (image forensics; contact: admin@echosnare.app)"}
     response = requests.get(image_url, headers=headers, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
     return Image.open(io.BytesIO(response.content)).convert("RGB"), response.content

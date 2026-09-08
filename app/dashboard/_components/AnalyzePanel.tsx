@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { InvestigationResult } from '@/types'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const TOPIC_PRESETS = [
   { label: 'Delhi strike today', query: 'Delhi strike today', type: 'topic' },
@@ -51,7 +51,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
   }
 
   return (
-    <section style={{ borderTop: '3px solid #00D4AA', borderBottom: BORDER, background: '#0F1A2B' }}>
+    <section style={{ borderTop: '3px solid #00D4AA', borderBottom: BORDER, background: '#07090e' }}>
       <div style={{ padding: '20px 22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -69,9 +69,9 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 padding: '5px 10px',
                 fontSize: 10,
                 fontWeight: 650,
-                border: mode === 'topic' ? '1px solid #00D4AA' : '1px solid #263957',
-                background: mode === 'topic' ? '#122B3F' : '#091220',
-                color: mode === 'topic' ? '#00D4AA' : '#8798B1',
+                border: mode === 'topic' ? '1px solid #00D4AA' : '1px solid #162032',
+                background: mode === 'topic' ? 'rgba(0, 212, 170, 0.12)' : '#04060a',
+                color: mode === 'topic' ? '#00D4AA' : '#94A3B8',
                 cursor: 'pointer',
               }}
             >
@@ -84,9 +84,9 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 padding: '5px 10px',
                 fontSize: 10,
                 fontWeight: 650,
-                border: mode === 'text' ? '1px solid #00D4AA' : '1px solid #263957',
-                background: mode === 'text' ? '#122B3F' : '#091220',
-                color: mode === 'text' ? '#00D4AA' : '#8798B1',
+                border: mode === 'text' ? '1px solid #00D4AA' : '1px solid #162032',
+                background: mode === 'text' ? 'rgba(0, 212, 170, 0.12)' : '#04060a',
+                color: mode === 'text' ? '#00D4AA' : '#94A3B8',
                 cursor: 'pointer',
               }}
             >
@@ -111,9 +111,9 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 ...MONO,
                 width: '100%',
                 boxSizing: 'border-box',
-                background: '#091322',
+                background: '#04060a',
                 color: '#F4F7FB',
-                border: '1px solid #2C4263',
+                border: '1px solid #162032',
                 padding: '13px 16px',
                 fontSize: 13,
                 outline: 'none',
@@ -128,13 +128,14 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
               ...MONO,
               padding: '0 24px',
               border: 0,
-              background: loading || !query.trim() ? '#203248' : '#00D4AA',
-              color: loading || !query.trim() ? '#6A7D96' : '#07131F',
+              background: loading || !query.trim() ? '#121a28' : '#00D4AA',
+              color: loading || !query.trim() ? '#64748B' : '#000000',
               fontWeight: 750,
               fontSize: 11,
               letterSpacing: '0.12em',
               cursor: loading || !query.trim() ? 'not-allowed' : 'pointer',
               whiteSpace: 'nowrap',
+              boxShadow: loading || !query.trim() ? 'none' : '0 0 15px rgba(0, 212, 170, 0.3)',
             }}
           >
             {loading ? 'EXECUTING PIPELINE…' : 'START INVESTIGATION →'}
@@ -153,8 +154,8 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
               }}
               style={{
                 ...MONO,
-                border: '1px solid #20334E',
-                background: '#0D1829',
+                border: '1px solid #162032',
+                background: '#04060a',
                 color: '#94A3B8',
                 padding: '4px 8px',
                 fontSize: 9,

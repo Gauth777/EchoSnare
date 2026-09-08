@@ -34,7 +34,7 @@ interface Props {
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const VERDICT_COLOR: Record<VerdictData['verdict'], string> = {
   HIGH:   '#EF4444',
@@ -67,7 +67,7 @@ function ScoreArc({ score, name }: { score: number; name: string }) {
       }}
     >
       <svg width="80" height="80" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r={R} fill="none" stroke="#1E2D4A" strokeWidth="4" />
+        <circle cx="40" cy="40" r={R} fill="none" stroke="#162032" strokeWidth="4" />
         <circle
           cx="40" cy="40" r={R}
           fill="none" stroke={color} strokeWidth="4"
@@ -78,82 +78,89 @@ function ScoreArc({ score, name }: { score: number; name: string }) {
         <text
           x="40" y="38" textAnchor="middle"
           fill="#E2E8F0" fontSize="16" fontWeight="700"
-          fontFamily='var(--font-jetbrains-mono,"Fira Code",monospace)'
+          fontFamily="inherit" dominantBaseline="middle"
         >
           {score}
         </text>
-        <text
-          x="40" y="52" textAnchor="middle"
-          fill="#4A5568" fontSize="8"
-          fontFamily='var(--font-jetbrains-mono,"Fira Code",monospace)'
-        >
-          /100
-        </text>
       </svg>
-      <div style={{ ...FONT, fontSize: '9px', letterSpacing: '0.1em', color: '#4A5568', textAlign: 'center', marginTop: '8px' }}>
+      <span
+        style={{
+          ...FONT,
+          fontSize:      '9px',
+          letterSpacing: '0.1em',
+          color:         '#94A3B8',
+          marginTop:     '6px',
+          textAlign:     'center',
+        }}
+      >
         {name}
-      </div>
+      </span>
     </div>
   )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function VerdictPanel({ data, accounts, clusters, sections }: Props) {
+export default function VerdictPanel({ data, accounts = [], clusters = 0, sections = {} }: Props) {
   const [exported, setExported] = useState(false)
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+      if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])
 
   const color = VERDICT_COLOR[data.verdict]
 
-  const narrative = [
-    data.summary.replace(/\.?$/, '.'),
-    `${data.flagged_accounts} of ${data.accounts_analyzed} accounts show synchronized posting patterns,` +
-      ` shared linguistic fingerprints across ${clusters ?? 2} cluster${(clusters ?? 2) === 1 ? '' : 's'},` +
-      ' and LLM-generated content signatures.',
-  ].join(' ')
+  const narrative =
+    data.verdict === 'HIGH'
+      ? `${data.flagged_accounts} of ${data.accounts_analyzed} accounts exhibit strong temporal and linguistic alignment across ${clusters} topic clusters, consistent with coordinated multi-account operation.`
+      : data.verdict === 'MEDIUM'
+      ? `${data.flagged_accounts} of ${data.accounts_analyzed} accounts show moderate behavioral similarity. Several accounts share posting intervals but linguistic fingerprints show partial variation.`
+      : `Analysis across ${data.accounts_analyzed} accounts reveals independent posting behaviors and distinct linguistic patterns. No evidence of coordinated entity control.`
 
   function handleExport() {
-    const report = {
-      report_id: typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.floor(Math.random() * 1e9)}`,
-      generated_at: new Date().toISOString(),
-      generated_by: 'ShadowTrace v2.0',
-      accounts_analyzed: accounts ?? [],
-      temporal_coordination: sections?.temporal_coordination ?? { score: data.temporal_score },
-      linguistic_fingerprint: sections?.linguistic_fingerprint ?? { score: data.linguistic_score },
-      ai_operation: sections?.ai_operation ?? { score: data.ai_operation_score },
-      verdict: data.verdict,
-      confidence: data.confidence,
-      summary: data.summary,
+    const payload = {
+      export_type:       'echosnare_coordination_report',
+      version:           '1.0',
+      generated_at:      new Date().toISOString(),
+      analyzed_accounts: accounts,
+      verdict: {
+        coordination_level: data.verdict,
+        confidence:         data.confidence,
+        summary:            data.summary,
+        accounts_analyzed:  data.accounts_analyzed,
+        flagged_accounts:   data.flagged_accounts,
+      },
+      component_scores: {
+        temporal_coordination: data.temporal_score,
+        linguistic_similarity: data.linguistic_score,
+        ai_operation_pattern:  data.ai_operation_score,
+      },
+      sections,
     }
 
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `shadowtrace-coordination-report-${report.report_id.slice(0, 8)}.json`
+    a.download = `echosnare-coordination-report-${new Date().toISOString().slice(0, 10)}.json`
     document.body.appendChild(a)
     a.click()
-    a.remove()
+    document.body.removeChild(a)
     URL.revokeObjectURL(url)
 
     setExported(true)
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    toastTimerRef.current = setTimeout(() => setExported(false), 3000)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setExported(false), 2500)
   }
 
   return (
     <div
       style={{
         border:          `1px solid ${color}`,
-        backgroundColor: '#0D1526',
+        backgroundColor: '#07090e',
         padding:         '20px',
       }}
     >
@@ -173,7 +180,7 @@ export default function VerdictPanel({ data, accounts, clusters, sections }: Pro
                 fontSize:      '11px',
                 fontWeight:    700,
                 letterSpacing: '0.18em',
-                color:         '#8B9AB5',
+                color:         '#94A3B8',
               }}
             >
               COORDINATION VERDICT
@@ -185,7 +192,7 @@ export default function VerdictPanel({ data, accounts, clusters, sections }: Pro
               CONFIDENCE: {Math.round(data.confidence * 100)}%
             </span>
           </div>
-          <div style={{ ...FONT, fontSize: '12px', color: '#8B9AB5', lineHeight: 1.7, maxWidth: '560px' }}>
+          <div style={{ ...FONT, fontSize: '12px', color: '#CBD5E1', lineHeight: 1.7, maxWidth: '560px' }}>
             {narrative}
           </div>
         </div>
@@ -215,11 +222,12 @@ export default function VerdictPanel({ data, accounts, clusters, sections }: Pro
             fontSize:        '10px',
             fontWeight:      700,
             letterSpacing:   '0.1em',
-            color:           '#080E1A',
+            color:           '#000000',
             backgroundColor: '#00D4AA',
             border:          'none',
             padding:         '10px 18px',
             cursor:          'pointer',
+            boxShadow:       '0 0 15px rgba(0, 212, 170, 0.3)',
           }}
         >
           EXPORT COORDINATION REPORT →
@@ -234,7 +242,7 @@ export default function VerdictPanel({ data, accounts, clusters, sections }: Pro
             position:        'fixed',
             right:           '24px',
             bottom:          '24px',
-            backgroundColor: '#080E1A',
+            backgroundColor: '#04060a',
             border:          '1px solid #00D4AA',
             color:           '#00D4AA',
             fontSize:        '11px',

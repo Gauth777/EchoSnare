@@ -107,7 +107,7 @@ export default function OutbreakCanvas() {
       return [x / l, y / l, z / l]
     }
 
-    // Monitoring satellites — ShadowTrace watching the network
+    // Monitoring satellites — EchoSnare watching the network
     const ORBITS = [
       { radius: 1.42, axis: norm3(0.28, 1, 0.2), speed: 0.00042, phase: 0, sats: 2 },
       { radius: 1.68, axis: norm3(-0.45, 1, -0.3), speed: -0.0003, phase: 2.1, sats: 1 },
@@ -367,9 +367,9 @@ export default function OutbreakCanvas() {
       ctx!.clearRect(0, 0, width, height)
 
       const glow = ctx!.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.65)
-      glow.addColorStop(0, 'rgba(30, 60, 100, 0.16)')
-      glow.addColorStop(0.55, 'rgba(18, 38, 68, 0.10)')
-      glow.addColorStop(1, 'rgba(8, 14, 26, 0)')
+      glow.addColorStop(0, 'rgba(0, 212, 170, 0.14)')
+      glow.addColorStop(0.5, 'rgba(0, 168, 255, 0.06)')
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
       ctx!.fillStyle = glow
       ctx!.fillRect(cx - R * 1.7, cy - R * 1.7, R * 3.4, R * 3.4)
 
@@ -548,14 +548,14 @@ export default function OutbreakCanvas() {
             }
           }
         } else {
-          const r = (n.r + 0.4) * n.scale
+          const r = (n.r + 0.5) * n.scale
           ctx!.globalAlpha = baseAlpha
-          ctx!.fillStyle = 'rgba(100, 134, 182, 0.95)'
+          ctx!.fillStyle = 'rgba(56, 189, 248, 0.95)'
           ctx!.beginPath()
           ctx!.arc(n.sx, n.sy, r, 0, Math.PI * 2)
           ctx!.fill()
-          ctx!.strokeStyle = 'rgba(150, 182, 224, 0.55)'
-          ctx!.lineWidth = 0.8
+          ctx!.strokeStyle = 'rgba(0, 212, 170, 0.65)'
+          ctx!.lineWidth = 0.9
           ctx!.stroke()
         }
         ctx!.globalAlpha = 1

@@ -34,7 +34,7 @@ interface Props {
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const VERDICT_META: Record<AIVerdict, { label: string; color: string }> = {
   LIKELY_AI:    { label: 'LIKELY AI',    color: '#EF4444' },
@@ -47,6 +47,12 @@ const SIGNAL_LABELS: Record<keyof AIOperationAccount['signals'], string> = {
   perplexity_score:     'PERPLEXITY SCORE',
   semantic_consistency: 'SEMANTIC CONSISTENCY',
   topic_drift:          'TOPIC DRIFT',
+}
+
+const SEV: Record<AIVerdict, { label: string; color: string }> = {
+  LIKELY_AI:    { label: 'HIGH AI PROBABILITY', color: '#EF4444' },
+  POSSIBLY_AI:  { label: 'MODERATE AI SIGNALS', color: '#F59E0B' },
+  LIKELY_HUMAN: { label: 'LOW AI PROBABILITY',  color: '#22C55E' },
 }
 
 function scoreColor(score: number): string {
@@ -132,7 +138,7 @@ function generateMockAccounts(handles: string[]): AIOperationAccount[] {
 
 function ScoreBar({ value, height = 6 }: { value: number; height?: number }) {
   return (
-    <div style={{ height: `${height}px`, backgroundColor: '#080E1A', border: BORDER }}>
+    <div style={{ height: `${height}px`, backgroundColor: '#04060a', border: BORDER }}>
       <div
         style={{
           height:          '100%',
@@ -151,7 +157,7 @@ function AccountCard({ account }: { account: AIOperationAccount }) {
   const meta = VERDICT_META[account.verdict]
 
   return (
-    <div style={{ border: BORDER, backgroundColor: '#111D35' }}>
+    <div style={{ border: BORDER, backgroundColor: '#04060a' }}>
       {/* Card header — click to expand */}
       <button
         onClick={() => setExpanded(e => !e)}
@@ -283,7 +289,7 @@ export default function AIOperationScores({ data, accounts }: Props) {
     <div
       style={{
         border:          BORDER,
-        backgroundColor: '#0D1526',
+        backgroundColor: '#07090e',
         minHeight:       '380px',
         padding:         '12px',
         display:         'flex',
@@ -291,14 +297,14 @@ export default function AIOperationScores({ data, accounts }: Props) {
         gap:             '12px',
       }}
     >
-      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568' }}>
+      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8' }}>
         AI OPERATION SCORES
       </div>
 
       {/* Score header */}
       <div style={{ borderBottom: BORDER, paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#8B9AB5' }}>
+          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#CBD5E1' }}>
             AI OPERATION SCORE
           </span>
           <span style={{ ...FONT, fontSize: '20px', fontWeight: 700, color: '#E2E8F0', lineHeight: 1 }}>
@@ -308,7 +314,7 @@ export default function AIOperationScores({ data, accounts }: Props) {
             {sev.label}
           </span>
         </div>
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginTop: '6px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '6px' }}>
           {flaggedCount} of {list.length} accounts show LLM generation patterns
         </div>
       </div>

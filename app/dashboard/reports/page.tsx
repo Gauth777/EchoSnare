@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 interface Report {
   campaignName:  string
@@ -73,7 +73,8 @@ function ThreatBadge({ level, color }: { level: string; color: string }) {
         letterSpacing:   '0.1em',
         padding:         '2px 8px',
         backgroundColor: color,
-        color:           '#080E1A',
+        color:           '#000000',
+        borderRadius:    '2px',
       }}
     >
       {level}
@@ -84,10 +85,10 @@ function ThreatBadge({ level, color }: { level: string; color: string }) {
 function StatCell({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <div style={{ borderRight: last ? 'none' : BORDER, padding: '12px 20px' }}>
-      <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.08em', marginBottom: '5px' }}>
+      <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.08em', marginBottom: '5px' }}>
         {label}
       </div>
-      <div style={{ ...FONT, fontSize: '14px', fontWeight: 700, color: '#E2E8F0' }}>
+      <div style={{ ...FONT, fontSize: '14px', fontWeight: 700, color: '#F4F7FB' }}>
         {value}
       </div>
     </div>
@@ -108,7 +109,7 @@ function ActivityBar({ hours, color }: { hours: number[]; color: string }) {
                 ...FONT,
                 width:    `${(6 / 24) * 100}%`,
                 fontSize: '9px',
-                color:    '#4A5568',
+                color:    '#94A3B8',
               }}
             >
               {`${String(h).padStart(2, '0')}:00`}
@@ -126,9 +127,10 @@ function ActivityBar({ hours, color }: { hours: number[]; color: string }) {
               style={{
                 flex:            1,
                 height:          '100%',
-                backgroundColor: active ? color : '#0D1526',
-                opacity:         active ? 0.75 : 0.4,
-                border:          active ? 'none' : '1px solid #1A2840',
+                backgroundColor: active ? color : '#04060a',
+                opacity:         active ? 0.85 : 0.4,
+                border:          active ? 'none' : '1px solid #162032',
+                borderRadius:    '1px',
               }}
             />
           )
@@ -150,7 +152,9 @@ function ReportCard({ report }: { report: Report }) {
     <div
       style={{
         border:          BORDER,
-        backgroundColor: '#0D1526',
+        backgroundColor: '#07090e',
+        borderRadius:    '4px',
+        overflow:        'hidden',
       }}
     >
       {/* Card header */}
@@ -161,9 +165,10 @@ function ReportCard({ report }: { report: Report }) {
           justifyContent:'space-between',
           padding:       '14px 20px',
           borderBottom:  `2px solid ${report.color}`,
+          backgroundColor:'#05070c',
         }}
       >
-        <span style={{ ...FONT, fontSize: '14px', fontWeight: 700, color: '#E2E8F0' }}>
+        <span style={{ ...FONT, fontSize: '14px', fontWeight: 700, color: '#F4F7FB' }}>
           {report.campaignName}
         </span>
         <ThreatBadge level={report.threat} color={report.threatColor} />
@@ -185,17 +190,17 @@ function ReportCard({ report }: { report: Report }) {
 
       {/* Narrative */}
       <div style={{ padding: '14px 20px', borderBottom: BORDER }}>
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.08em', marginBottom: '7px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.08em', marginBottom: '7px' }}>
           CAMPAIGN NARRATIVE
         </div>
-        <div style={{ ...FONT, fontSize: '11px', color: '#8B9AB5', lineHeight: 1.65 }}>
+        <div style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', lineHeight: 1.65 }}>
           {report.narrative}
         </div>
       </div>
 
       {/* 24h activity timeline */}
       <div style={{ padding: '14px 20px', borderBottom: BORDER }}>
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.08em', marginBottom: '8px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.08em', marginBottom: '8px' }}>
           CAMPAIGN ACTIVITY — LAST 24H
         </div>
         <ActivityBar hours={report.activityHours} color={report.color} />
@@ -216,6 +221,7 @@ function ReportCard({ report }: { report: Report }) {
             color:           report.color,
             backgroundColor: 'transparent',
             cursor:          'pointer',
+            borderRadius:    '2px',
           }}
         >
           NETWORK VISUALIZATION →
@@ -229,15 +235,15 @@ function ReportCard({ report }: { report: Report }) {
 
 function SummaryStrip() {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: BORDER }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: BORDER, backgroundColor: '#05070c' }}>
       {[
         { label: 'TOTAL CAMPAIGNS',  value: '3',       color: '#EF4444' },
         { label: 'ACCOUNTS FLAGGED', value: '1,315',   color: '#F59E0B' },
-        { label: 'AVG CONFIDENCE',   value: '89%',     color: '#E2E8F0' },
-        { label: 'REPORTS GENERATED',value: '47',      color: '#E2E8F0' },
+        { label: 'AVG CONFIDENCE',   value: '89%',     color: '#F4F7FB' },
+        { label: 'REPORTS GENERATED',value: '47',      color: '#F4F7FB' },
       ].map((cell, i) => (
         <div key={cell.label} style={{ padding: '14px 24px', borderRight: i < 3 ? BORDER : 'none' }}>
-          <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.1em', marginBottom: '8px' }}>
             {cell.label}
           </div>
           <div style={{ ...FONT, fontSize: '28px', fontWeight: 700, color: cell.color, lineHeight: 1 }}>
@@ -253,16 +259,16 @@ function SummaryStrip() {
 
 export default function ReportsPage() {
   return (
-    <div style={{ borderTop: BORDER }}>
+    <div style={{ borderTop: BORDER, backgroundColor: '#000000', minHeight: '100%' }}>
 
       <SummaryStrip />
 
       {/* Page header */}
       <div style={{ padding: '24px 24px 0' }}>
-        <div style={{ ...FONT, fontSize: '18px', fontWeight: 700, color: '#E2E8F0', marginBottom: '4px' }}>
+        <div style={{ ...FONT, fontSize: '18px', fontWeight: 700, color: '#F4F7FB', marginBottom: '4px' }}>
           Campaign Intelligence Reports
         </div>
-        <div style={{ ...FONT, fontSize: '11px', color: '#4A5568' }}>
+        <div style={{ ...FONT, fontSize: '11px', color: '#94A3B8' }}>
           3 active campaigns · click a report to view its network graph
         </div>
       </div>

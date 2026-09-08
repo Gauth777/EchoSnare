@@ -1,38 +1,38 @@
 @import "tailwindcss";
 
 @theme {
-  --color-st-bg: #080E1A;
-  --color-st-panel: #101A2C;
-  --color-st-border: #263957;
+  --color-st-bg: #000000;
+  --color-st-panel: #07090e;
+  --color-st-border: #162032;
   --color-st-text: #F4F7FB;
-  --color-st-muted: #8B9AB5;
-  --color-st-subtle: #B8C4D6;
+  --color-st-muted: #94A3B8;
+  --color-st-subtle: #CBD5E1;
   --color-st-accent: #00D4AA;
-  --color-st-critical: #FF5A67;
-  --color-st-warning: #FFC14D;
-  --color-st-info: #65A9FF;
-  --color-st-node-fill: #1A2A45;
-  --color-st-node-stroke: #3B577D;
+  --color-st-critical: #EF4444;
+  --color-st-warning: #F59E0B;
+  --color-st-info: #38BDF8;
+  --color-st-node-fill: #0c121e;
+  --color-st-node-stroke: #1f304a;
 
-  --color-cyber-bg: #080E1A;
-  --color-cyber-card: #101A2C;
-  --color-cyber-border: #263957;
+  --color-cyber-bg: #000000;
+  --color-cyber-card: #07090e;
+  --color-cyber-border: #162032;
   --color-cyber-teal: #00D4AA;
-  --color-cyber-purple: #8B6CFF;
-  --color-cyber-muted: #8B9AB5;
+  --color-cyber-purple: #8B5CF6;
+  --color-cyber-muted: #94A3B8;
   --color-cyber-text: #F4F7FB;
-  --color-cyber-subtle: #B8C4D6;
-  --color-cyber-deep: #0C1525;
+  --color-cyber-subtle: #CBD5E1;
+  --color-cyber-deep: #030508;
 
   --font-mono: var(--font-jetbrains-mono), 'Fira Code', 'Courier New', monospace;
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 
-html { background: #080E1A; }
+html { background: #000000; }
 
 body {
   margin: 0;
-  background: #080E1A;
+  background: #000000;
   color: #F4F7FB;
   font-family: var(--font-inter, system-ui, sans-serif);
 }
@@ -41,7 +41,7 @@ button, textarea, input { font: inherit; }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #314866 #080E1A;
+  scrollbar-color: #24354d #000000;
 }
 
 ::selection {
@@ -54,12 +54,12 @@ button, textarea, input { font: inherit; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.sev-HIGH { border-left: 3px solid #FF5A67; }
-.sev-MED  { border-left: 3px solid #FFC14D; }
+.sev-HIGH { border-left: 3px solid #EF4444; }
+.sev-MED  { border-left: 3px solid #F59E0B; }
 .sev-LOW  { border-left: 3px solid #00D4AA; }
 
 .st-alert-card { transition: background-color 0.18s ease, border-color 0.18s ease; }
-.st-alert-card:hover { background-color: #17253C !important; }
+.st-alert-card:hover { background-color: #0f1624 !important; }
 .st-alert-new {
   animation: st-alert-slide-in 0.25s ease forwards;
   border-left-color: #00D4AA !important;
@@ -92,7 +92,7 @@ button, textarea, input { font: inherit; }
   50% { opacity: 0.2; }
 }
 .st-skeleton {
-  background-color: #1D2F4B;
+  background-color: #121d2d;
   animation: st-skeleton-pulse 1.4s ease-in-out infinite;
 }
 
@@ -104,17 +104,17 @@ button, textarea, input { font: inherit; }
 .st-dashboard-shell {
   min-height: 100%;
   background:
-    radial-gradient(circle at 72% 0%, rgba(0, 212, 170, 0.045), transparent 28%),
-    #080E1A;
+    radial-gradient(circle at 72% 0%, rgba(0, 212, 170, 0.05), transparent 35%),
+    #000000;
 }
 
 .st-dashboard-panel {
-  background: #101A2C;
-  border-color: #263957;
+  background: #07090e;
+  border-color: #162032;
 }
 
 .st-dashboard-label {
-  color: #AAB7CA;
+  color: #94A3B8;
 }
 
 .st-dashboard-value {
@@ -122,11 +122,11 @@ button, textarea, input { font: inherit; }
 }
 
 .st-dashboard-secondary {
-  color: #AAB7CA;
+  color: #CBD5E1;
 }
 
 .st-dashboard-muted {
-  color: #7F90A9;
+  color: #64748B;
 }
 
 @media (max-width: 767px) {

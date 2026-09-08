@@ -68,8 +68,12 @@ export default function NetworkGraphPanel() {
       const t2 = setTimeout(() => setOpacity(1),   400)
       timers.current = [t1, t2]
     }
+    window.addEventListener('echosnare:campaign-select', onSelect)
     window.addEventListener('shadowtrace:campaign-select', onSelect)
-    return () => window.removeEventListener('shadowtrace:campaign-select', onSelect)
+    return () => {
+      window.removeEventListener('echosnare:campaign-select', onSelect)
+      window.removeEventListener('shadowtrace:campaign-select', onSelect)
+    }
   }, [])
 
   function switchTo(idx: number) {
@@ -101,11 +105,12 @@ export default function NetworkGraphPanel() {
           height:         '36px',
           flexShrink:     0,
           padding:        '0 16px',
-          borderBottom:   '1px solid #1E2D4A',
+          borderBottom:   '1px solid #162032',
+          background:     '#05070c',
           gap:            '6px',
         }}
       >
-        <span style={{ fontSize: '10px', color: '#4A5568', letterSpacing: '0.1em', marginRight: '10px' }}>
+        <span style={{ fontSize: '10px', color: '#94A3B8', letterSpacing: '0.1em', marginRight: '10px' }}>
           CAMPAIGN
         </span>
 
@@ -117,11 +122,11 @@ export default function NetworkGraphPanel() {
               ...FONT,
               fontSize:        '11px',
               padding:         '3px 12px',
-              border:          '1px solid #1E2D4A',
+              border:          selected === i ? '1px solid #00D4AA' : '1px solid #162032',
               cursor:          'pointer',
-              backgroundColor: selected === i ? '#00D4AA' : 'transparent',
-              color:           selected === i ? '#080E1A' : '#4A5568',
-              fontWeight:      selected === i ? 600 : 400,
+              backgroundColor: selected === i ? '#00D4AA' : '#04060a',
+              color:           selected === i ? '#000000' : '#94A3B8',
+              fontWeight:      selected === i ? 700 : 400,
               letterSpacing:   '0.04em',
             }}
           >
@@ -139,12 +144,12 @@ export default function NetworkGraphPanel() {
             gap:             '6px',
             fontSize:        '11px',
             padding:         '3px 12px',
-            border:          '1px solid #1E2D4A',
+            border:          '1px solid #162032',
             borderLeft:      '2px solid #22C55E',
             cursor:          'pointer',
-            backgroundColor: showLive ? '#22C55E' : 'transparent',
-            color:           showLive ? '#080E1A' : '#4A5568',
-            fontWeight:      showLive ? 600 : 400,
+            backgroundColor: showLive ? '#22C55E' : '#04060a',
+            color:           showLive ? '#000000' : '#94A3B8',
+            fontWeight:      showLive ? 700 : 400,
             letterSpacing:   '0.04em',
           }}
         >
@@ -155,7 +160,7 @@ export default function NetworkGraphPanel() {
               width:           '5px',
               height:          '5px',
               borderRadius:    '50%',
-              backgroundColor: showLive ? '#080E1A' : '#22C55E',
+              backgroundColor: showLive ? '#000000' : '#22C55E',
               flexShrink:      0,
             }}
           />
@@ -165,15 +170,15 @@ export default function NetworkGraphPanel() {
         {/* Right side: threat level + node count */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
           {showLive ? (
-            <span style={{ fontSize: '10px', color: '#22C55E', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '10px', color: '#22C55E', letterSpacing: '0.06em', fontWeight: 600 }}>
               REAL-TIME · FACT-CHECKER RSS
             </span>
           ) : (
             <>
-              <span style={{ fontSize: '10px', color: THREAT_COLOR[campaign.threat_level] }}>
+              <span style={{ fontSize: '10px', color: THREAT_COLOR[campaign.threat_level], fontWeight: 700 }}>
                 {campaign.threat_level}
               </span>
-              <span style={{ fontSize: '10px', color: '#4A5568', letterSpacing: '0.06em' }}>
+              <span style={{ fontSize: '10px', color: '#94A3B8', letterSpacing: '0.06em' }}>
                 {`${campaign.nodes.length} NODES · ${campaign.edges.length} EDGES`}
               </span>
             </>
@@ -197,6 +202,7 @@ export default function NetworkGraphPanel() {
           transition: 'opacity 0.3s ease',
           overflow:   'hidden',
           position:   'relative',
+          backgroundColor: '#000000',
         }}
       >
         {/* Skeleton — shown until D3 entrance animation completes */}
@@ -205,7 +211,7 @@ export default function NetworkGraphPanel() {
             style={{
               position:        'absolute',
               inset:           0,
-              backgroundColor: '#080E1A',
+              backgroundColor: '#000000',
               display:         'flex',
               alignItems:      'center',
               justifyContent:  'center',
@@ -216,12 +222,12 @@ export default function NetworkGraphPanel() {
               {/* Skeleton edges */}
               {[[200,130,80,60],[200,130,200,130],[200,130,320,60],[200,130,100,200],[200,130,300,200]].map(([x1,y1,x2,y2],i) => (
                 <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="#1A2840" strokeWidth="1.5" className="st-skeleton" style={{ animationDelay: `${i*0.15}s` }} />
+                  stroke="#162032" strokeWidth="1.5" className="st-skeleton" style={{ animationDelay: `${i*0.15}s` }} />
               ))}
               {/* Skeleton nodes */}
               {[[200,130,18],[80,60,12],[200,60,12],[320,60,12],[100,200,8],[300,200,8],[140,90,6],[260,90,6],[150,170,6],[250,170,6]].map(([cx,cy,r],i) => (
                 <circle key={i} cx={cx} cy={cy} r={r}
-                  className="st-skeleton" fill="#1A2840" style={{ animationDelay: `${i*0.1}s` }} />
+                  className="st-skeleton" fill="#162032" style={{ animationDelay: `${i*0.1}s` }} />
               ))}
             </svg>
           </div>

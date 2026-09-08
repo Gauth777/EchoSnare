@@ -40,7 +40,7 @@ type TooltipState = { x: number; y: number; node: SimNode } | null
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 const SIM_THRESHOLD = 0.7
 
 const CLUSTER_COLORS = ['#00D4AA', '#F59E0B', '#EF4444', '#7C3AED']
@@ -275,7 +275,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
         .attr('r', radius)
         .attr('fill', n => CLUSTER_COLORS[n.cluster_id % CLUSTER_COLORS.length])
         .attr('fill-opacity', 0.85)
-        .attr('stroke', '#080E1A')
+        .attr('stroke', '#000000')
         .attr('stroke-width', 1.5)
         .style('cursor', 'pointer')
         .on('mousemove', (event: MouseEvent, n) => {
@@ -323,7 +323,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
     <div
       style={{
         border:          BORDER,
-        backgroundColor: '#0D1526',
+        backgroundColor: '#07090e',
         minHeight:       '380px',
         padding:         '12px',
         display:         'flex',
@@ -331,14 +331,14 @@ export default function FingerprintCluster({ data, accounts }: Props) {
         gap:             '12px',
       }}
     >
-      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568' }}>
+      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8' }}>
         LINGUISTIC FINGERPRINT
       </div>
 
       {/* Score header */}
       <div style={{ borderBottom: BORDER, paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#8B9AB5' }}>
+          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#CBD5E1' }}>
             LINGUISTIC FINGERPRINT SCORE
           </span>
           <span style={{ ...FONT, fontSize: '20px', fontWeight: 700, color: '#E2E8F0', lineHeight: 1 }}>
@@ -348,7 +348,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
             {sev}
           </span>
         </div>
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginTop: '6px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '6px' }}>
           Clusters detected: {clusterCounts.length}&nbsp;&nbsp;&nbsp;&nbsp;Accounts share authorship patterns
         </div>
       </div>
@@ -380,7 +380,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
                   flexShrink:      0,
                 }}
               />
-              <span style={{ ...FONT, fontSize: '9px', letterSpacing: '0.06em', color: '#4A5568' }}>
+              <span style={{ ...FONT, fontSize: '9px', letterSpacing: '0.06em', color: '#94A3B8' }}>
                 Cluster {id} ({count} account{count > 1 ? 's' : ''})
               </span>
             </span>
@@ -396,7 +396,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
               left:            Math.min(tooltip.x + 12, Math.max(0, width - 220)),
               top:             tooltip.y + 12,
               width:           '210px',
-              backgroundColor: '#080E1A',
+              backgroundColor: '#04060a',
               border:          `1px solid ${CLUSTER_COLORS[tooltip.node.cluster_id % CLUSTER_COLORS.length]}`,
               padding:         '10px',
               pointerEvents:   'none',
@@ -406,7 +406,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#E2E8F0', marginBottom: '4px' }}>
               {tooltip.node.handle}
             </div>
-            <div style={{ fontSize: '9px', color: '#8B9AB5', marginBottom: '8px' }}>
+            <div style={{ fontSize: '9px', color: '#CBD5E1', marginBottom: '8px' }}>
               Cluster {tooltip.node.cluster_id}
               {' · '}
               AI prob: {Math.round(tooltip.node.ai_probability * 100)}%
@@ -418,7 +418,7 @@ export default function FingerprintCluster({ data, accounts }: Props) {
                   display:        'flex',
                   justifyContent: 'space-between',
                   fontSize:       '9px',
-                  color:          '#4A5568',
+                  color:          '#94A3B8',
                   marginTop:      '3px',
                 }}
               >
