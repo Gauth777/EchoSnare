@@ -14,9 +14,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'ShadowTrace — AI Misinformation Detection System',
+  title: 'ECHOSNARE — Graph Intelligence for Coordinated Threats',
   description:
-    'Multi-agent AI system detecting coordinated misinformation campaigns and deepfakes in real-time',
+    'Autonomous multi-agent graph intelligence for investigating coordinated online disinformation and influence activity.',
 }
 
 export default function RootLayout({
