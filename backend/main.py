@@ -61,7 +61,7 @@ def _sanitize_investigation_payload(data: dict) -> dict:
         data["threat_score"] = final_score
         data["misinformation_score"] = final_score
         data["risk_level"] = risk_level
-        data["score_basis"] = "Content risk index from retrieved evidence"
+        data["score_basis"] = "Content risk index from relevant retrieved evidence"
 
         threat_alert = data.get("threat_alert")
         if isinstance(threat_alert, dict):
@@ -69,13 +69,37 @@ def _sanitize_investigation_payload(data: dict) -> dict:
             threat_alert["confidence_score"] = final_score
             threat_alert["campaign_detected"] = final_score >= 70
 
-    # Evidence-backed claim assessment is deliberately independent of threat score.
+    # Claim assessment is based only on evidence that passed the retrieval gate.
     query = str(data.get("query", ""))
     raw_evidence = data.get("evidence") or []
     claim_assessment = assess_claim(query, raw_evidence)
     data["claim_assessment"] = claim_assessment.to_dict()
     data["evidence"] = enrich_evidence(raw_evidence)
     data["evidence_confidence"] = claim_assessment.confidence
+    data["confidence"] = claim_assessment.confidence
+
+    # Keep fact-check matches consistent with the actual evidence shown to analysts.
+    relevant_fact_checks = [
+        item for item in raw_evidence
+        if str(item.get("source_type", "") if isinstance(item, dict) else getattr(item, "source_type", "")) == "fact_checker"
+    ]
+    data["fact_check_matches"] = [
+        {
+            "title": item.get("title", "") if isinstance(item, dict) else getattr(item, "title", ""),
+            "source": item.get("source_name", "") if isinstance(item, dict) else getattr(item, "source_name", ""),
+            "url": item.get("source_url", "") if isinstance(item, dict) else getattr(item, "source_url", ""),
+            "matched_terms": [],
+        }
+        for item in relevant_fact_checks
+    ]
+
+    # Remove legacy wording that equates "retrieved fact-check" with "debunked claim"
+    # when no relevant fact-check evidence survived retrieval.
+    if isinstance(data.get("key_findings"), list) and not relevant_fact_checks:
+        data["key_findings"] = [
+            finding for finding in data["key_findings"]
+            if finding.get("title") != "Debunked Fact-Check Match Discovered"
+        ]
 
     # Never expose synthetic propagation accounts as discovered OSINT.
     graph = data.get("graph")
