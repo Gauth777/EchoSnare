@@ -43,7 +43,6 @@ function statusBadge(status: string) {
 export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
   return (
     <div style={{ padding: 20, background: '#07090e', borderBottom: BORDER }}>
-      {/* Source Provenance Channels */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 10 }}>
           SOURCE PROVENANCE & CHANNEL AVAILABILITY
@@ -69,19 +68,21 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
                 <span style={{ color: '#E2E8F0', fontWeight: 600 }}>{st.source_name}</span>
                 <span style={{ color: sb.color, fontSize: 9, fontWeight: 700 }}>{sb.label}</span>
                 {st.count > 0 && <span style={{ color: '#00D4AA', fontSize: 10 }}>({st.count} items)</span>}
+                {st.warning_or_error && st.status !== 'completed' && (
+                  <span title={st.warning_or_error} style={{ color: '#64748B', fontSize: 9 }}>ⓘ</span>
+                )}
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* Retrieved Evidence List */}
       <div>
         <div style={{ ...MONO, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em' }}>
             RETRIEVED EVIDENCE ({evidence.length})
           </span>
-          <span style={{ fontSize: 10, color: '#64748B' }}>EXPLICIT SOURCE PROVENANCE RECORD</span>
+          <span style={{ fontSize: 10, color: '#64748B' }}>SOURCE ROLE & PROVENANCE</span>
         </div>
 
         {evidence.length === 0 ? (
@@ -92,6 +93,7 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {evidence.map(item => {
               const badge = sourceTypeBadge(item.source_type)
+              const assessment = item.source_assessment
               return (
                 <div
                   key={item.id}
@@ -118,19 +120,23 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
                       >
                         {badge.label}
                       </span>
-                      <span style={{ fontSize: 13, fontWeight: 650, color: '#F4F7FB' }}>
-                        {item.title}
-                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 650, color: '#F4F7FB' }}>{item.title}</span>
                     </div>
 
                     <span style={{ ...MONO, fontSize: 10, color: '#00D4AA', whiteSpace: 'nowrap' }}>
-                      {Math.round(item.confidence * 100)}% Confidence
+                      {Math.round(item.confidence * 100)}%
                     </span>
                   </div>
 
-                  <p style={{ margin: '4px 0 8px', fontSize: 12, lineHeight: 1.55, color: '#CBD5E1' }}>
-                    {item.text}
-                  </p>
+                  {assessment && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <span style={{ ...MONO, fontSize: 9, fontWeight: 750, color: '#E2E8F0' }}>{assessment.label}</span>
+                      <span style={{ fontSize: 11, color: '#64748B' }}>·</span>
+                      <span style={{ fontSize: 11, color: '#94A3B8' }}>{assessment.explanation}</span>
+                    </div>
+                  )}
+
+                  <p style={{ margin: '4px 0 8px', fontSize: 12, lineHeight: 1.55, color: '#CBD5E1' }}>{item.text}</p>
 
                   <div style={{ ...MONO, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#64748B' }}>
                     <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -140,12 +146,7 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
                     </div>
 
                     {item.source_url && item.source_url.startsWith('http') && (
-                      <a
-                        href={item.source_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: '#60A5FA', textDecoration: 'underline', fontSize: 10 }}
-                      >
+                      <a href={item.source_url} target="_blank" rel="noreferrer" style={{ color: '#60A5FA', textDecoration: 'underline', fontSize: 10 }}>
                         View Original Source ↗
                       </a>
                     )}
