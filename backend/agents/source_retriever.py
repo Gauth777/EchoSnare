@@ -83,6 +83,58 @@ def _clean_html(raw_html: str) -> str:
     return " ".join(cleaned.split())
 
 
+_STOPWORDS = {
+    "this", "that", "with", "have", "will", "from", "your", "before", "after",
+    "been", "were", "they", "them", "their", "there", "about", "would", "could",
+    "should", "into", "over", "than", "then", "what", "when", "where", "which",
+    "while", "because", "also", "just", "very", "more", "some", "such", "only",
+    "does", "done", "said", "says", "news", "post", "posts", "claim", "claims",
+    "fact", "check", "checking", "report", "reports", "reported", "india", "indian",
+}
+
+
+def _tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-zA-Z0-9]+", (text or "").lower())
+        if len(token) > 2 and token not in _STOPWORDS
+    }
+
+
+def _is_relevant(query: str, item_text: str) -> tuple[bool, float]:
+    """Keep only evidence with a meaningful topical/entity overlap."""
+    query_tokens = _tokens(query)
+    item_tokens = _tokens(item_text)
+    if not query_tokens or not item_tokens:
+        return False, 0.0
+
+    overlap = query_tokens & item_tokens
+    if not overlap:
+        return False, 0.0
+
+    # Handles are strong entity anchors.
+    query_handles = {h.lower() for h in re.findall(r"@[A-Za-z0-9_.]+", query)}
+    item_handles = {h.lower() for h in re.findall(r"@[A-Za-z0-9_.]+", item_text)}
+    if query_handles & item_handles:
+        return True, 1.0
+
+    # Prevent generic one-word matches from becoming evidence.
+    strong_overlap = {t for t in overlap if len(t) >= 4 or t.isdigit()}
+    overlap_count = len(overlap)
+    coverage = overlap_count / max(1, len(query_tokens))
+
+    if len(query_tokens) <= 2:
+        keep = len(strong_overlap) >= 1
+    else:
+        keep = len(strong_overlap) >= 2
+
+    if not keep:
+        return False, 0.0
+
+    score = min(1.0, (coverage * 0.7) + (min(1.0, len(strong_overlap) / 3) * 0.3))
+    return True, round(score, 3)
+
+
 class SourceRetriever:
     """Multi-source evidence retrieval engine with explicit provenance."""
 
@@ -95,7 +147,6 @@ class SourceRetriever:
         statuses: List[SourceStatus] = []
 
         if mode == "image_url":
-            # Image URL processing
             evidence.append(
                 EvidenceItem(
                     id=hashlib.md5(query_str.encode()).hexdigest()[:8],
@@ -111,47 +162,22 @@ class SourceRetriever:
                     evidence_type="media_file",
                 )
             )
-            statuses.append(
-                SourceStatus(
-                    source_type="image",
-                    source_name="Direct Image URL",
-                    status="completed",
-                    count=1,
-                    duration_ms=50,
-                )
-            )
-            return RetrievalResult(
-                query=query_str,
-                query_mode=mode,
-                evidence=evidence,
-                source_statuses=statuses,
-                total_sources_checked=1,
-                total_evidence_count=1,
-            )
+            statuses.append(SourceStatus("image", "Direct Image URL", "completed", 1, 50))
+            return RetrievalResult(query_str, mode, evidence, statuses, 1, 1)
 
         if mode == "handle":
-            # Handle-specific search (Bluesky / Social graph)
             handle = query_str.split()[0].lstrip("@").rstrip(":,;")
             bs_evidence, bs_status = self._fetch_bluesky_handle_posts(handle, now_iso)
             evidence.extend(bs_evidence)
             statuses.append(bs_status)
 
-            # Fact-check RSS check for handle
-            fc_evidence, fc_status = self._fetch_fact_check_matches(handle, now_iso)
+            fc_evidence, fc_status = self._fetch_fact_check_matches(query_str, now_iso)
             evidence.extend(fc_evidence)
             statuses.append(fc_status)
 
-            return RetrievalResult(
-                query=query_str,
-                query_mode=mode,
-                evidence=evidence,
-                source_statuses=statuses,
-                total_sources_checked=len(statuses),
-                total_evidence_count=len(evidence),
-            )
+            return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
 
         if mode == "text":
-            # User supplied full text block
             evidence.append(
                 EvidenceItem(
                     id=hashlib.md5(query_str.encode()).hexdigest()[:8],
@@ -167,81 +193,40 @@ class SourceRetriever:
                     evidence_type="user_text",
                 )
             )
-            statuses.append(
-                SourceStatus(
-                    source_type="user_text",
-                    source_name="Supplied Text Input",
-                    status="completed",
-                    count=1,
-                    duration_ms=5,
-                )
-            )
+            statuses.append(SourceStatus("user_text", "Supplied Text Input", "completed", 1, 5))
 
-            # Cross reference supplied text against fact-check feed
             fc_evidence, fc_status = self._fetch_fact_check_matches(query_str[:150], now_iso)
             evidence.extend(fc_evidence)
             statuses.append(fc_status)
 
-            # Retrieve news if keywords exist
             news_evidence, news_status = self._fetch_google_news(query_str[:100], now_iso)
             evidence.extend(news_evidence)
             statuses.append(news_status)
 
-            return RetrievalResult(
-                query=query_str,
-                query_mode=mode,
-                evidence=evidence,
-                source_statuses=statuses,
-                total_sources_checked=len(statuses),
-                total_evidence_count=len(evidence),
-            )
+            return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
 
-        # Mode == 'topic' or general query
-        # 1. Fetch Google News RSS for live topic evidence
         news_evidence, news_status = self._fetch_google_news(query_str, now_iso)
         evidence.extend(news_evidence)
         statuses.append(news_status)
 
-        # 2. Fetch live fact-checker RSS feed matches
         fc_evidence, fc_status = self._fetch_fact_check_matches(query_str, now_iso)
         evidence.extend(fc_evidence)
         statuses.append(fc_status)
 
-        # 3. Search Bluesky social posts
         bs_evidence, bs_status = self._search_bluesky_posts(query_str, now_iso)
         evidence.extend(bs_evidence)
         statuses.append(bs_status)
 
-        # Add explicit unavailable statuses for unsupported platforms so UI is honest
-        statuses.append(
-            SourceStatus(
-                source_type="x_twitter",
-                source_name="X / Twitter API",
-                status="unavailable",
-                count=0,
-                duration_ms=0,
-                warning_or_error="X API credentials unconfigured / rate-limited",
-            )
-        )
-        statuses.append(
-            SourceStatus(
-                source_type="reddit",
-                source_name="Reddit API",
-                status="unavailable",
-                count=0,
-                duration_ms=0,
-                warning_or_error="Reddit API integration unconfigured",
-            )
-        )
+        statuses.append(SourceStatus(
+            "x_twitter", "X / Twitter API", "unavailable", 0, 0,
+            "X API credentials unconfigured / rate-limited",
+        ))
+        statuses.append(SourceStatus(
+            "reddit", "Reddit API", "unavailable", 0, 0,
+            "Reddit API integration unconfigured",
+        ))
 
-        return RetrievalResult(
-            query=query_str,
-            query_mode=mode,
-            evidence=evidence,
-            source_statuses=statuses,
-            total_sources_checked=len(statuses),
-            total_evidence_count=len(evidence),
-        )
+        return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
 
     @staticmethod
     def detect_query_mode(query: str) -> str:
@@ -263,10 +248,7 @@ class SourceRetriever:
         evidence: List[EvidenceItem] = []
 
         try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "EchoSnare/1.0 (+https://echosnare.app)"},
-            )
+            req = urllib.request.Request(url, headers={"User-Agent": "EchoSnare/1.0 (+https://echosnare.app)"})
             with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
                 raw_data = resp.read()
 
@@ -303,8 +285,11 @@ class SourceRetriever:
                 pub = entry["pub"]
                 summary = entry["summary"] or title
                 source_name = entry["source"]
-
                 if not title or not link:
+                    continue
+
+                is_match, relevance = _is_relevant(query, f"{title} {summary}")
+                if not is_match:
                     continue
 
                 evidence.append(
@@ -318,14 +303,14 @@ class SourceRetriever:
                         author=source_name,
                         title=title,
                         text=summary[:350],
-                        confidence=0.85,
+                        confidence=max(0.65, min(0.95, 0.65 + relevance * 0.30)),
                         evidence_type="news_article",
                     )
                 )
 
             duration = int((datetime.now() - start).total_seconds() * 1000)
             status_code = "completed" if evidence else "limited"
-            warn = None if evidence else "No live news articles found for this query"
+            warn = None if evidence else "No relevant live news articles found for this query"
             return evidence, SourceStatus("web_news", "Google News Web Search", status_code, len(evidence), duration, warn)
 
         except Exception as exc:
@@ -339,35 +324,37 @@ class SourceRetriever:
 
         try:
             claims = fetch_live_claims()
-            query_tokens = {w.lower() for w in query.split() if len(w) > 3 and w.isalpha()}
+            scored: list[tuple[float, dict[str, Any]]] = []
 
             for item in claims:
-                text_to_match = f"{item.get('title', '')} {item.get('summary', '')}".lower()
-                matched_tokens = [t for t in query_tokens if t in text_to_match]
+                title = item.get("title", "")
+                summary = item.get("summary", "")
+                is_match, relevance = _is_relevant(query, f"{title} {summary}")
+                if not is_match:
+                    continue
+                scored.append((relevance, item))
 
-                # Match if 1 major key term or multiple tokens overlap
-                if len(matched_tokens) >= 1 or not query_tokens:
-                    evidence.append(
-                        EvidenceItem(
-                            id=item.get("id", hashlib.md5(item.get("url", "").encode()).hexdigest()[:8]),
-                            source_type="fact_checker",
-                            source_name=item.get("source", "Indian Fact-Checkers"),
-                            source_url=item.get("url", ""),
-                            retrieved_at=now_iso,
-                            published_at=item.get("published") or now_iso,
-                            author=item.get("source", "Fact-Checker"),
-                            title=item.get("title", ""),
-                            text=item.get("summary", ""),
-                            confidence=0.92,
-                            evidence_type="debunked_claim",
-                        )
+            scored.sort(key=lambda row: row[0], reverse=True)
+            for relevance, item in scored[:5]:
+                evidence.append(
+                    EvidenceItem(
+                        id=item.get("id", hashlib.md5(item.get("url", "").encode()).hexdigest()[:8]),
+                        source_type="fact_checker",
+                        source_name=item.get("source", "Indian Fact-Checkers"),
+                        source_url=item.get("url", ""),
+                        retrieved_at=now_iso,
+                        published_at=item.get("published") or now_iso,
+                        author=item.get("source", "Fact-Checker"),
+                        title=item.get("title", ""),
+                        text=item.get("summary", ""),
+                        confidence=max(0.75, min(0.97, 0.75 + relevance * 0.22)),
+                        evidence_type="debunked_claim",
                     )
-                if len(evidence) >= 5:
-                    break
+                )
 
             duration = int((datetime.now() - start).total_seconds() * 1000)
             status_code = "completed" if evidence else "limited"
-            warn = None if evidence else "No matching debunked claims in live fact-checker RSS feed"
+            warn = None if evidence else "No relevant fact-check claims found in live feeds"
             return evidence, SourceStatus("fact_checker", "Indian Fact-Checker Network", status_code, len(evidence), duration, warn)
 
         except Exception as exc:
@@ -380,11 +367,7 @@ class SourceRetriever:
         evidence: List[EvidenceItem] = []
 
         try:
-            resp = requests.get(
-                BLUESKY_SEARCH_URL,
-                params={"q": query, "limit": 10},
-                timeout=REQUEST_TIMEOUT,
-            )
+            resp = requests.get(BLUESKY_SEARCH_URL, params={"q": query, "limit": 10}, timeout=REQUEST_TIMEOUT)
             if resp.status_code == 200:
                 posts = resp.json().get("posts", [])
                 for p in posts:
@@ -392,26 +375,30 @@ class SourceRetriever:
                     author = p.get("author", {}).get("handle", "bluesky_user")
                     uri = p.get("uri", "")
                     created = p.get("record", {}).get("createdAt", now_iso)
-                    if text:
-                        evidence.append(
-                            EvidenceItem(
-                                id=hashlib.md5(uri.encode()).hexdigest()[:8],
-                                source_type="bluesky",
-                                source_name="Bluesky Social",
-                                source_url=f"https://bsky.app/profile/{author}",
-                                retrieved_at=now_iso,
-                                published_at=created,
-                                author=f"@{author}",
-                                title=f"Post by @{author}",
-                                text=text[:300],
-                                confidence=0.75,
-                                evidence_type="social_post",
-                            )
+                    if not text:
+                        continue
+                    is_match, relevance = _is_relevant(query, text)
+                    if not is_match:
+                        continue
+                    evidence.append(
+                        EvidenceItem(
+                            id=hashlib.md5(uri.encode()).hexdigest()[:8],
+                            source_type="bluesky",
+                            source_name="Bluesky Social",
+                            source_url=f"https://bsky.app/profile/{author}",
+                            retrieved_at=now_iso,
+                            published_at=created,
+                            author=f"@{author}",
+                            title=f"Post by @{author}",
+                            text=text[:300],
+                            confidence=max(0.60, min(0.90, 0.60 + relevance * 0.30)),
+                            evidence_type="social_post",
                         )
+                    )
 
             duration = int((datetime.now() - start).total_seconds() * 1000)
             status_code = "completed" if evidence else "limited"
-            warn = None if evidence else "No matching social posts on Bluesky public feed"
+            warn = None if evidence else "No relevant social posts on Bluesky public feed"
             return evidence, SourceStatus("bluesky", "Bluesky Public Network", status_code, len(evidence), duration, warn)
 
         except Exception as exc:
