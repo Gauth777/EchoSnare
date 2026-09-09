@@ -7,7 +7,6 @@ const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fir
 const BORDER = '1px solid #162032'
 
 const TOPIC_PRESETS = [
-  { label: 'Delhi NEET protest (@neet_leak)', query: '@neet_leak_alert: NEET 2024 paper leaked in Delhi exam centers, answer key circulating #NEETScam', type: 'text' },
   { label: 'Account: @TruthVoter2024', query: '@TruthVoter2024: EVM machine tampered in South Delhi polling center #EVMHack', type: 'text' },
   { label: 'Delhi strike today', query: 'Delhi strike today', type: 'topic' },
   { label: 'Samay Raina controversy', query: 'Samay Raina controversy', type: 'topic' },
@@ -25,7 +24,6 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Restore previous query and mode from sessionStorage across tab navigation
   useEffect(() => {
     try {
       const savedQuery = sessionStorage.getItem('echosnare_active_query')
@@ -42,7 +40,6 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
     setLoading(true)
     setError(null)
 
-    // Save active query and mode immediately
     try {
       sessionStorage.setItem('echosnare_active_query', q)
       sessionStorage.setItem('echosnare_active_mode', mode)
@@ -58,12 +55,10 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
       if (!response.ok) throw new Error('Investigation request failed')
       const data = (await response.json()) as InvestigationResult
 
-      // Persist completed investigation in sessionStorage
       try {
         sessionStorage.setItem('echosnare_active_investigation', JSON.stringify(data))
       } catch {}
 
-      // Dispatch event for network graph and other panels to catch immediately
       window.dispatchEvent(new CustomEvent('echosnare:investigation-complete', { detail: data }))
 
       if (onInvestigationComplete) {
@@ -79,7 +74,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
   return (
     <section style={{ borderTop: '3px solid #00D4AA', borderBottom: BORDER, background: '#07090e' }}>
       <div style={{ padding: '20px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 10px #00D4AA' }} />
             <span style={{ ...MONO, fontSize: 11, fontWeight: 700, color: '#F4F7FB', letterSpacing: '0.14em' }}>
@@ -87,7 +82,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button
               onClick={() => setMode('topic')}
               style={{
@@ -95,7 +90,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 padding: '5px 10px',
                 fontSize: 10,
                 fontWeight: 650,
-                border: mode === 'topic' ? '1px solid #00D4AA' : '1px solid #162032',
+                border: mode === 'topic' ? '1px solid #00D4AA' : BORDER,
                 background: mode === 'topic' ? 'rgba(0, 212, 170, 0.12)' : '#04060a',
                 color: mode === 'topic' ? '#00D4AA' : '#94A3B8',
                 cursor: 'pointer',
@@ -110,7 +105,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 padding: '5px 10px',
                 fontSize: 10,
                 fontWeight: 650,
-                border: mode === 'text' ? '1px solid #00D4AA' : '1px solid #162032',
+                border: mode === 'text' ? '1px solid #00D4AA' : BORDER,
                 background: mode === 'text' ? 'rgba(0, 212, 170, 0.12)' : '#04060a',
                 color: mode === 'text' ? '#00D4AA' : '#94A3B8',
                 cursor: 'pointer',
@@ -121,8 +116,8 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 520px', minWidth: 0, position: 'relative' }}>
             <input
               type="text"
               value={query}
@@ -139,7 +134,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
                 boxSizing: 'border-box',
                 background: '#04060a',
                 color: '#F4F7FB',
-                border: '1px solid #162032',
+                border: BORDER,
                 padding: '13px 16px',
                 fontSize: 13,
                 outline: 'none',
@@ -152,6 +147,8 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
             disabled={loading || !query.trim()}
             style={{
               ...MONO,
+              flex: '0 1 auto',
+              minHeight: 44,
               padding: '0 24px',
               border: 0,
               background: loading || !query.trim() ? '#121a28' : '#00D4AA',
@@ -180,7 +177,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
               }}
               style={{
                 ...MONO,
-                border: '1px solid #162032',
+                border: BORDER,
                 background: '#04060a',
                 color: '#94A3B8',
                 padding: '4px 8px',
@@ -193,7 +190,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
           ))}
         </div>
 
-        <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: '#00D4AA', opacity: 0.9 }}>
+        <div style={{ ...MONO, display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 10, fontSize: 10, color: '#00D4AA', opacity: 0.9, lineHeight: 1.5 }}>
           <span>💡</span>
           <span>
             <strong>Track Specific Account:</strong> Prefix your message with any handle like <code>@user_handle: fake claim...</code> to evaluate that account as the primary origin hub and visualize its propagation network.
