@@ -84,7 +84,6 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ ...MONO, fontSize: 10, color: '#F4F7FB' }}>{Math.round(claimAssessment.confidence * 100)}% evidence confidence</div>
-            <div style={{ ...MONO, fontSize: 10, color: '#64748B', maxWidth: 540 }}>{claimAssessment.explanation}</div>
           </div>
         </div>
       )}
@@ -126,20 +125,19 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
       <div>
         <div style={{ ...MONO, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em' }}>
-            RETRIEVED EVIDENCE ({evidence.length})
+            RELEVANT EVIDENCE ({evidence.length})
           </span>
-          <span style={{ fontSize: 10, color: '#64748B' }}>SOURCE ROLE & PROVENANCE</span>
+          <span style={{ fontSize: 10, color: '#64748B' }}>SOURCE PROVENANCE</span>
         </div>
 
         {evidence.length === 0 ? (
           <div style={{ padding: '16px 20px', background: '#04060a', border: BORDER, color: '#94A3B8', fontSize: 12, ...MONO }}>
-            No live external evidence items retrieved for this query. Analysis is limited to internal pattern heuristics.
+            No relevant external evidence was retrieved for this claim.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {evidence.map(item => {
               const badge = sourceTypeBadge(item.source_type)
-              const assessment = item.source_assessment
               return (
                 <div
                   key={item.id}
@@ -174,14 +172,6 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
                     </span>
                   </div>
 
-                  {assessment && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                      <span style={{ ...MONO, fontSize: 9, fontWeight: 750, color: '#E2E8F0' }}>{assessment.label}</span>
-                      <span style={{ fontSize: 11, color: '#64748B' }}>·</span>
-                      <span style={{ fontSize: 11, color: '#94A3B8' }}>{assessment.explanation}</span>
-                    </div>
-                  )}
-
                   <p style={{ margin: '4px 0 8px', fontSize: 12, lineHeight: 1.55, color: '#CBD5E1' }}>{item.text}</p>
 
                   <div style={{ ...MONO, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#64748B' }}>
@@ -192,7 +182,7 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
                     </div>
 
                     {item.source_url && item.source_url.startsWith('http') && (
-                      <a href={item.source_url} target="_blank" rel="noreferrer" style={{ color: '#60A5FA', textDecoration: 'underline', fontSize: 10 }}>
+                      <a href={item.source_url} target='_blank' rel='noreferrer' style={{ color: '#60A5FA', textDecoration: 'underline', fontSize: 10 }}>
                         View Original Source ↗
                       </a>
                     )}
