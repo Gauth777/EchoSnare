@@ -24,89 +24,209 @@ class WebResearchResult:
 
 
 class WebResearcher:
-    """Active claim-research agent using Groq Compound's live web tools."""
+    """Active two-pass research agent: Compound web discovery, then LLM evidence adjudication."""
 
     def __init__(self) -> None:
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.model = os.getenv("GROQ_RESEARCH_MODEL", "groq/compound")
+        self.search_model = os.getenv("GROQ_RESEARCH_MODEL", "groq/compound")
+        self.analysis_model = os.getenv("GROQ_ANALYSIS_MODEL", os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"))
 
     def research(self, query: str) -> WebResearchResult:
         if not self.api_key or self.api_key == "your_key" or Groq is None:
-            return WebResearchResult(model=self.model)
+            logger.warning("Web research skipped: GROQ_API_KEY unavailable")
+            return WebResearchResult(model=self.search_model)
 
-        client = Groq(api_key=self.api_key, default_headers={"Groq-Model-Version": "latest"})
+        try:
+            client = Groq(api_key=self.api_key, default_headers={"Groq-Model-Version": "latest"})
+            search_results, search_performed = self._discover(client, query)
+            if not search_results:
+                logger.warning("Web research returned no executed search results for query: %s", query)
+                return WebResearchResult(model=self.search_model, search_performed=search_performed)
+
+            evidence, assessment, summary = self._adjudicate(client, query, search_results)
+            return WebResearchResult(
+                evidence=evidence,
+                claim_assessment=assessment,
+                summary=summary,
+                model=f"{self.search_model} + {self.analysis_model}",
+                search_performed=search_performed,
+            )
+        except Exception as exc:
+            logger.exception("Live LLM web research failed: %s", exc)
+            return WebResearchResult(model=self.search_model)
+
+    def _discover(self, client: Any, query: str) -> tuple[list[dict[str, Any]], bool]:
         prompt = f"""
-You are ECHOSNARE's live web research and claim verification agent.
+You are ECHOSNARE's live OSINT research agent.
 
-INVESTIGATED CLAIM:
+Investigated claim/topic:
 {query}
 
-Actively research this claim on the live web. Search multiple formulations and investigate current reporting, primary/official sources, and reputable fact-checks. For important sources, inspect the actual webpage when possible.
+Research this claim on the live web. This is a fact-checking investigation, not a generic topic search.
 
-Select only sources that materially help evaluate the exact claim. For each selected source, determine whether its factual content SUPPORTS, CONTRADICTS, or provides important CONTEXT. Score claim relevance and evidentiary usefulness independently.
+Search several distinct formulations covering:
+1. The exact claim and important quoted phrases.
+2. The main people, organizations, place, event and date in the claim.
+3. Official or primary sources that could confirm or deny it.
+4. Reputable news reporting covering the underlying event.
+5. Fact-checking articles that explicitly evaluate the allegation.
 
-Return ONLY valid JSON:
+Use the web search tool and visit important result pages when useful. Favor recent and India-relevant sources when the claim concerns India.
+
+Do not merely search for the generic topic. The goal is to assemble enough material for another model to decide whether the exact claim is supported or contradicted.
+
+In your final answer, briefly state what you found, but do not fabricate sources.
+""".strip()
+
+        response = client.chat.completions.create(
+            model=self.search_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a rigorous OSINT web researcher. Actually search the live web. Prefer primary, official, reputable news and direct fact-check sources. Never invent sources.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            citation_options="enabled",
+            search_settings={"country": "india"},
+            max_tokens=1800,
+        )
+        message = response.choices[0].message
+        results = self._executed_search_results(message)
+        return results, bool(results)
+
+    def _adjudicate(self, client: Any, query: str, search_results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any], str]:
+        candidates = []
+        for index, result in enumerate(search_results[:12], start=1):
+            content = result.get("content", "")
+            if len(content) > 1400:
+                content = content[:1400]
+            candidates.append(
+                f"SOURCE {index}\nURL: {result['url']}\nTITLE: {result.get('title', '')}\nCONTENT: {content}\nSEARCH SCORE: {result.get('search_score', 0):.3f}"
+            )
+        evidence_block = "\n\n".join(candidates)
+
+        prompt = f"""
+You are ECHOSNARE's claim verification analyst.
+
+CLAIM UNDER INVESTIGATION:
+{query}
+
+Below are REAL web results returned by the live research engine. Evaluate them against the exact claim.
+
+{evidence_block}
+
+For each source that materially helps answer the claim, determine:
+- claim_relevance: 0-100
+- evidence_score: 0-100
+- direction: SUPPORTS, CONTRADICTS, or CONTEXT
+
+Important rules:
+- Ignore sources that only share generic words or a broad topic.
+- A source is useful only when its actual content addresses the same event, entities, allegation, date, place, or factual assertion.
+- Prefer independent sources over duplicated syndication.
+- Treat official statements and direct primary records as especially useful when they directly address the allegation.
+- A fact-check is evidence only when it fact-checks this specific claim or the same factual assertion.
+- Repeated reporting is corroboration, not independent proof if it all traces to one source.
+- Do not infer that a claim is true or false merely because the search corpus is incomplete.
+- Never invent a URL, title, publisher, quotation, date, or fact.
+
+Return ONLY valid JSON in exactly this shape:
 {{
   "claim_status": "SUPPORTED|PARTIALLY_SUPPORTED|CONTRADICTED|UNVERIFIED",
   "claim_label": "SUPPORTED|PARTIALLY SUPPORTED|NOT SUPPORTED|NOT YET VERIFIED",
   "claim_confidence": 0,
-  "summary": "2-4 sentence evidence-based conclusion",
+  "summary": "2-4 concise sentences stating the best-supported conclusion and the strongest evidence.",
   "sources": [
     {{
-      "url": "https://...",
-      "title": "...",
-      "publisher": "...",
-      "published_at": "...",
+      "source_number": 1,
       "claim_relevance": 0,
       "evidence_score": 0,
       "direction": "SUPPORTS|CONTRADICTS|CONTEXT",
-      "reason": "One concise sentence explaining what this source contributes."
+      "reason": "One concise sentence describing the actual evidence contributed by this source."
     }}
   ]
 }}
-
-Scoring rules:
-- claim_relevance: 0-100 for how directly the source addresses the exact people/entities/event/date/place/assertions in the claim.
-- evidence_score: 0-100 for how strongly the source content can be used to evaluate the claim.
-- Never use source reputation alone as evidence of truth.
-- Never call a claim false solely because evidence was not found.
-- Never call a claim true solely because outlets repeat it.
-- A fact-check counts only when it actually evaluates the investigated claim.
-- Prefer 4-8 strong sources. Do not include weak or unrelated search results.
-- Do not invent URLs, publishers, dates, or facts.
 """.strip()
 
-        try:
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a rigorous OSINT research agent. Search the live web, inspect relevant sources, and return structured evidence. Never fabricate sources."},
-                    {"role": "user", "content": prompt},
-                ],
-                citation_options="enabled",
-                search_settings={"country": "india"},
-                response_format={"type": "json_object"},
-                max_tokens=3000,
-            )
-            message = response.choices[0].message
-            payload = self._parse_json(message.content or "")
-            search_results = self._executed_search_results(message)
-            if not payload:
-                return WebResearchResult(model=self.model, search_performed=bool(search_results))
+        response = client.chat.completions.create(
+            model=self.analysis_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a skeptical evidence adjudicator. Base every conclusion on the supplied source text. Do not hallucinate sources or facts.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=2500,
+        )
+        payload = self._parse_json(response.choices[0].message.content or "") or {}
 
-            evidence = self._build_evidence(payload, search_results)
-            assessment = {
-                "status": self._valid_status(payload.get("claim_status")),
-                "label": self._valid_label(payload.get("claim_label")),
-                "explanation": str(payload.get("summary", "")),
-                "confidence": max(0.0, min(1.0, float(payload.get("claim_confidence", 0) or 0) / 100)),
-                "corroborating_sources": sum(1 for e in evidence if e.get("direction") == "SUPPORTS"),
-                "contradictory_sources": sum(1 for e in evidence if e.get("direction") == "CONTRADICTS"),
-            }
-            return WebResearchResult(evidence=evidence, claim_assessment=assessment, summary=str(payload.get("summary", "")), model=self.model, search_performed=bool(search_results))
-        except Exception as exc:
-            logger.exception("Live LLM web research failed: %s", exc)
-            return WebResearchResult(model=self.model)
+        raw_sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
+        evidence: list[dict[str, Any]] = []
+        for source in raw_sources:
+            if not isinstance(source, dict):
+                continue
+            try:
+                number = int(source.get("source_number", 0))
+                relevance = max(0, min(100, int(float(source.get("claim_relevance", 0) or 0))))
+                score = max(0, min(100, int(float(source.get("evidence_score", 0) or 0))))
+            except (TypeError, ValueError):
+                continue
+            if number < 1 or number > len(search_results) or relevance < 60 or score < 55:
+                continue
+
+            raw = search_results[number - 1]
+            direction = str(source.get("direction", "CONTEXT")).upper()
+            if direction not in {"SUPPORTS", "CONTRADICTS", "CONTEXT"}:
+                direction = "CONTEXT"
+            evidence.append(
+                {
+                    "url": raw["url"],
+                    "title": raw.get("title", "Web source"),
+                    "publisher": self._publisher(raw.get("url", ""), raw.get("title", "")),
+                    "published_at": None,
+                    "content": raw.get("content", "")[:3500],
+                    "claim_relevance": relevance,
+                    "evidence_score": score,
+                    "direction": direction,
+                    "reason": str(source.get("reason") or ""),
+                    "search_score": round(float(raw.get("search_score", 0.0)), 3),
+                }
+            )
+
+        evidence.sort(key=lambda item: (-item["evidence_score"], -item["claim_relevance"]))
+        evidence = evidence[:8]
+
+        confidence = max(0.0, min(1.0, float(payload.get("claim_confidence", 0) or 0) / 100))
+        status = self._valid_status(payload.get("claim_status"))
+        label = self._valid_label(payload.get("claim_label"))
+        summary = str(payload.get("summary") or "").strip()
+
+        supporting = sum(1 for item in evidence if item["direction"] == "SUPPORTS")
+        contradicting = sum(1 for item in evidence if item["direction"] == "CONTRADICTS")
+
+        assessment = {
+            "status": status,
+            "label": label,
+            "explanation": summary,
+            "confidence": confidence,
+            "corroborating_sources": supporting,
+            "contradictory_sources": contradicting,
+        }
+
+        if evidence:
+            evidence_lines = "\n".join(
+                f"• {item['publisher']} — {item['title']}"
+                for item in evidence[:5]
+            )
+            combined_summary = f"{summary}\n\nKEY EVIDENCE:\n{evidence_lines}" if summary else f"KEY EVIDENCE:\n{evidence_lines}"
+        else:
+            combined_summary = summary
+
+        return evidence, assessment, combined_summary
 
     @staticmethod
     def _parse_json(content: str) -> dict[str, Any] | None:
@@ -117,7 +237,7 @@ Scoring rules:
             end = content.rfind("}")
             if start >= 0 and end > start:
                 try:
-                    return json.loads(content[start:end + 1])
+                    return json.loads(content[start : end + 1])
                 except json.JSONDecodeError:
                     pass
         return None
@@ -127,16 +247,6 @@ Scoring rules:
         if isinstance(value, dict):
             return value.get(key, default)
         return getattr(value, key, default)
-
-    @staticmethod
-    def _valid_status(value: Any) -> str:
-        value = str(value or "UNVERIFIED").upper()
-        return value if value in {"SUPPORTED", "PARTIALLY_SUPPORTED", "CONTRADICTED", "UNVERIFIED"} else "UNVERIFIED"
-
-    @staticmethod
-    def _valid_label(value: Any) -> str:
-        value = str(value or "NOT YET VERIFIED").upper()
-        return value if value in {"SUPPORTED", "PARTIALLY SUPPORTED", "NOT SUPPORTED", "NOT YET VERIFIED"} else "NOT YET VERIFIED"
 
     def _executed_search_results(self, message: Any) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
@@ -150,46 +260,34 @@ Scoring rules:
                 url = self._read(result, "url", "")
                 if not url:
                     continue
-                results.append({
-                    "url": str(url),
-                    "title": str(self._read(result, "title", "")),
-                    "content": str(self._read(result, "content", "")),
-                    "search_score": float(self._read(result, "score", 0.0) or 0.0),
-                })
-        return list({r["url"]: r for r in results}.values())
+                results.append(
+                    {
+                        "url": str(url),
+                        "title": str(self._read(result, "title", "")),
+                        "content": str(self._read(result, "content", "")),
+                        "search_score": float(self._read(result, "score", 0.0) or 0.0),
+                    }
+                )
+        unique: dict[str, dict[str, Any]] = {}
+        for result in results:
+            unique[result["url"]] = result
+        return list(unique.values())
 
-    def _build_evidence(self, payload: dict[str, Any], search_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
-        by_url = {r["url"]: r for r in search_results}
-        evidence: list[dict[str, Any]] = []
-        for source in sources:
-            if not isinstance(source, dict):
-                continue
-            url = str(source.get("url", "")).strip()
-            raw = by_url.get(url)
-            if not url or raw is None:
-                continue
-            direction = str(source.get("direction", "CONTEXT")).upper()
-            if direction not in {"SUPPORTS", "CONTRADICTS", "CONTEXT"}:
-                direction = "CONTEXT"
-            try:
-                relevance = max(0, min(100, int(float(source.get("claim_relevance", 0) or 0))))
-                score = max(0, min(100, int(float(source.get("evidence_score", 0) or 0))))
-            except (TypeError, ValueError):
-                continue
-            if relevance < 55 or score < 55:
-                continue
-            evidence.append({
-                "url": url,
-                "title": str(source.get("title") or raw.get("title") or "Web source"),
-                "publisher": str(source.get("publisher") or ""),
-                "published_at": str(source.get("published_at") or "") or None,
-                "content": str(raw.get("content") or ""),
-                "claim_relevance": relevance,
-                "evidence_score": score,
-                "direction": direction,
-                "reason": str(source.get("reason") or ""),
-                "search_score": round(float(raw.get("search_score", 0.0)), 3),
-            })
-        evidence.sort(key=lambda e: (-e["evidence_score"], -e["claim_relevance"]))
-        return evidence[:8]
+    @staticmethod
+    def _publisher(url: str, title: str) -> str:
+        host = url.split("//", 1)[-1].split("/", 1)[0]
+        if host.startswith("www."):
+            host = host[4:]
+        if host:
+            return host
+        return title[:80] or "Web Source"
+
+    @staticmethod
+    def _valid_status(value: Any) -> str:
+        value = str(value or "UNVERIFIED").upper()
+        return value if value in {"SUPPORTED", "PARTIALLY_SUPPORTED", "CONTRADICTED", "UNVERIFIED"} else "UNVERIFIED"
+
+    @staticmethod
+    def _valid_label(value: Any) -> str:
+        value = str(value or "NOT YET VERIFIED").upper()
+        return value if value in {"SUPPORTED", "PARTIALLY SUPPORTED", "NOT SUPPORTED", "NOT YET VERIFIED"} else "NOT YET VERIFIED"
