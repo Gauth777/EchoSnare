@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { InvestigationResult } from '@/types'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
 const BORDER = '1px solid #162032'
 
 const TOPIC_PRESETS = [
+  { label: 'Delhi NEET protest (@neet_leak)', query: '@neet_leak_alert: NEET 2024 paper leaked in Delhi exam centers, answer key circulating #NEETScam', type: 'text' },
+  { label: 'Account: @TruthVoter2024', query: '@TruthVoter2024: EVM machine tampered in South Delhi polling center #EVMHack', type: 'text' },
   { label: 'Delhi strike today', query: 'Delhi strike today', type: 'topic' },
   { label: 'Samay Raina controversy', query: 'Samay Raina controversy', type: 'topic' },
-  { label: 'EVM voting hack claim', query: 'EVM voting hack claim', type: 'topic' },
+  { label: 'WhatsApp Miracle Cure', query: 'FWD: WHO internal report confirms nimbu paani cures cancer! Share before deleted.', type: 'text' },
   { label: 'Bluesky Handle', query: 'jay.bsky.social', type: 'handle' },
-  { label: 'WhatsApp Forward', query: 'FWD: WHO internal report confirms nimbu paani cures cancer! Share before deleted.', type: 'text' },
 ]
 
 interface Props {
@@ -24,12 +25,28 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Restore previous query and mode from sessionStorage across tab navigation
+  useEffect(() => {
+    try {
+      const savedQuery = sessionStorage.getItem('echosnare_active_query')
+      const savedMode = sessionStorage.getItem('echosnare_active_mode')
+      if (savedQuery) setQuery(savedQuery)
+      if (savedMode === 'topic' || savedMode === 'text') setMode(savedMode)
+    } catch {}
+  }, [])
+
   async function handleInvestigate(selectedQuery?: string) {
     const q = selectedQuery || query
     if (!q.trim() || loading) return
 
     setLoading(true)
     setError(null)
+
+    // Save active query and mode immediately
+    try {
+      sessionStorage.setItem('echosnare_active_query', q)
+      sessionStorage.setItem('echosnare_active_mode', mode)
+    } catch {}
 
     try {
       const response = await fetch('/api/investigate', {
@@ -40,6 +57,15 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
 
       if (!response.ok) throw new Error('Investigation request failed')
       const data = (await response.json()) as InvestigationResult
+
+      // Persist completed investigation in sessionStorage
+      try {
+        sessionStorage.setItem('echosnare_active_investigation', JSON.stringify(data))
+      } catch {}
+
+      // Dispatch event for network graph and other panels to catch immediately
+      window.dispatchEvent(new CustomEvent('echosnare:investigation-complete', { detail: data }))
+
       if (onInvestigationComplete) {
         onInvestigationComplete(data)
       }
@@ -165,6 +191,13 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
               {preset.label}
             </button>
           ))}
+        </div>
+
+        <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: '#00D4AA', opacity: 0.9 }}>
+          <span>💡</span>
+          <span>
+            <strong>Track Specific Account:</strong> Prefix your message with any handle like <code>@user_handle: fake claim...</code> to evaluate that account as the primary origin hub and visualize its propagation network.
+          </span>
         </div>
 
         {error && (

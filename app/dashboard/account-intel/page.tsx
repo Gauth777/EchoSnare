@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { AccountIntelResult } from '@/app/api/account-intel/route'
 import TemporalHeatmap from '@/components/account-intel/TemporalHeatmap'
 import FingerprintCluster from '@/components/account-intel/FingerprintCluster'
@@ -44,6 +44,34 @@ export default function AccountIntelPage() {
   const [result,    setResult]    = useState<AccountIntelResult | null>(null)
   const [analyzed,  setAnalyzed]  = useState<string[]>([])
   const [error,     setError]     = useState<string | null>(null)
+  const [promptAccounts, setPromptAccounts] = useState<string[]>([])
+  const [promptQuery,    setPromptQuery]    = useState<string>('')
+
+  // Check sessionStorage for accounts extracted from active prompt investigation
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('echosnare_active_investigation')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.query) setPromptQuery(parsed.query)
+        const accs: string[] = []
+        if (Array.isArray(parsed?.accounts_detected)) {
+          accs.push(...parsed.accounts_detected)
+        }
+        if (Array.isArray(parsed?.graph?.nodes)) {
+          for (const node of parsed.graph.nodes) {
+            const accId = String(node.accountId || '')
+            const lbl = String(node.label || '')
+            if (accId.startsWith('@') && !accs.includes(accId)) accs.push(accId)
+            else if (lbl.startsWith('@') && !accs.includes(lbl)) accs.push(lbl)
+          }
+        }
+        if (accs.length > 0) {
+          setPromptAccounts(accs)
+        }
+      }
+    } catch {}
+  }, [])
 
   function addHandle(raw: string) {
     const handle = normalizeHandle(raw)
@@ -113,6 +141,49 @@ export default function AccountIntelPage() {
         <div style={{ ...FONT, fontSize: '11px', color: '#94A3B8', marginBottom: '16px' }}>
           Analyze whether a set of accounts is operated by the same entity
         </div>
+
+        {/* Banner if accounts were extracted from active prompt */}
+        {promptAccounts.length > 0 && (
+          <div
+            style={{
+              ...FONT,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              marginBottom: '16px',
+              backgroundColor: '#04221d',
+              border: '1px solid #00D4AA',
+              borderRadius: 2,
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#F4F7FB' }}>
+              <span style={{ color: '#00D4AA', fontWeight: 800 }}>● ACTIVE PROMPT INTEL:</span>
+              <span>Found {promptAccounts.length} accounts in prompt: &quot;{promptQuery.slice(0, 32)}...&quot;</span>
+              <span style={{ color: '#94A3B8' }}>({promptAccounts.join(', ')})</span>
+            </div>
+            <button
+              onClick={() => {
+                setHandles(promptAccounts.slice(0, MAX_ACCOUNTS))
+              }}
+              style={{
+                ...FONT,
+                fontSize: 10,
+                fontWeight: 750,
+                backgroundColor: '#00D4AA',
+                color: '#000000',
+                border: 0,
+                padding: '5px 12px',
+                cursor: 'pointer',
+                letterSpacing: '0.08em',
+              }}
+            >
+              LOAD ACCOUNTS INTO MATRIX →
+            </button>
+          </div>
+        )}
 
         {/* Tag-style input */}
         <div

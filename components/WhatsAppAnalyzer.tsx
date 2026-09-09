@@ -137,7 +137,46 @@ export default function WhatsAppAnalyzer() {
         body:    JSON.stringify({ text }),
       })
       if (!res.ok) throw new Error('request failed')
-      setInvestigation((await res.json()) as InvestigationResult)
+      const raw = await res.json()
+      const normalizedSteps: InvestigationStep[] = Array.isArray(raw.steps)
+        ? raw.steps
+        : Array.isArray(raw.stages)
+          ? raw.stages.map((s: { stage_name?: string; stage_id?: string; duration_ms?: number; detail?: string }) => ({
+              agent: s.stage_name || s.stage_id || 'Investigation Agent',
+              duration_ms: s.duration_ms || 0,
+              summary: s.detail || '',
+            }))
+          : []
+
+      const normalizedFactChecks = Array.isArray(raw.fact_check_matches)
+        ? raw.fact_check_matches
+        : Array.isArray(raw.evidence)
+          ? raw.evidence
+              .filter((e: { source_type?: string }) => e.source_type === 'fact_checker')
+              .map((e: { title?: string; source_name?: string; source_url?: string }) => ({
+                title: e.title || 'Fact Check Record',
+                source: e.source_name || 'Fact Checker',
+                url: e.source_url || '',
+                matched_terms: [],
+              }))
+          : []
+
+      const normalizedThreatAlert = raw.threat_alert ?? {
+        threat_type: raw.narrative_category || 'Coordinated Threat Activity',
+        severity: raw.risk_level || 'MED',
+        explanation: raw.synthesis_dossier || 'Analysis evaluated risk across multi-agent evidence.',
+      }
+
+      setInvestigation({
+        steps: normalizedSteps,
+        misinformation_score: raw.threat_score ?? raw.misinformation_score ?? 0,
+        risk_level: raw.risk_level ?? 'MED',
+        language: raw.language ?? 'en',
+        claim_extracted: raw.claim_extracted ?? '',
+        red_flags: raw.red_flags ?? [],
+        fact_check_matches: normalizedFactChecks,
+        threat_alert: normalizedThreatAlert,
+      })
     } catch {
       setError('Investigation failed — backend unreachable.')
     } finally {
@@ -367,9 +406,9 @@ export default function WhatsAppAnalyzer() {
                 {/* Agent pipeline timeline */}
                 <div style={{ border: BORDER, backgroundColor: '#04060a', padding: '14px' }}>
                   <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '10px' }}>
-                    AGENT PIPELINE — {investigation.steps.length} AGENTS EXECUTED
+                    AGENT PIPELINE — {investigation.steps?.length ?? 0} AGENTS EXECUTED
                   </div>
-                  {investigation.steps.map((step, i) => (
+                  {(investigation.steps ?? []).map((step, i) => (
                     <div
                       key={`${step.agent}-${i}`}
                       style={{
@@ -377,7 +416,7 @@ export default function WhatsAppAnalyzer() {
                         alignItems:   'baseline',
                         gap:          '10px',
                         padding:      '7px 0',
-                        borderBottom: i < investigation.steps.length - 1 ? BORDER : 'none',
+                        borderBottom: i < (investigation.steps?.length ?? 0) - 1 ? BORDER : 'none',
                       }}
                     >
                       <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', flexShrink: 0, width: '18px' }}>
@@ -406,12 +445,12 @@ export default function WhatsAppAnalyzer() {
                 </div>
 
                 {/* Fact-check matches */}
-                {investigation.fact_check_matches.length > 0 && (
+                {(investigation.fact_check_matches?.length ?? 0) > 0 && (
                   <div style={{ border: '1px solid #3B82F6', backgroundColor: '#04060a', padding: '14px' }}>
                     <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#3B82F6', marginBottom: '10px' }}>
                       ⚑ MATCHED DEBUNKED CLAIMS — LIVE FACT-CHECKER FEED
                     </div>
-                    {investigation.fact_check_matches.map(match => (
+                    {investigation.fact_check_matches?.map(match => (
                       <div key={match.title} style={{ padding: '6px 0' }}>
                         <a
                           href={match.url || undefined}
@@ -422,7 +461,7 @@ export default function WhatsAppAnalyzer() {
                           {match.title}
                         </a>
                         <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '3px' }}>
-                          {match.source} · matched: {match.matched_terms.join(', ')}
+                          {match.source} · matched: {match.matched_terms?.join(', ') || 'verified debunk'}
                         </div>
                       </div>
                     ))}
@@ -430,28 +469,30 @@ export default function WhatsAppAnalyzer() {
                 )}
 
                 {/* Threat alert */}
-                <div
-                  style={{
-                    border:          '1px solid #EF4444',
-                    backgroundColor: '#EF444426',
-                    padding:         '14px 16px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '6px' }}>
-                    <span style={{ ...FONT, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', color: '#EF4444' }}>
-                      THREAT ALERT
-                    </span>
-                    <span style={{ ...FONT, fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
-                      {investigation.threat_alert.threat_type}
-                    </span>
-                    <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#EF4444' }}>
-                      SEVERITY: {investigation.threat_alert.severity.toUpperCase()}
-                    </span>
+                {investigation.threat_alert && (
+                  <div
+                    style={{
+                      border:          '1px solid #EF4444',
+                      backgroundColor: '#EF444426',
+                      padding:         '14px 16px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '6px' }}>
+                      <span style={{ ...FONT, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', color: '#EF4444' }}>
+                        THREAT ALERT
+                      </span>
+                      <span style={{ ...FONT, fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
+                        {investigation.threat_alert.threat_type || 'Coordinated Threat Activity'}
+                      </span>
+                      <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#EF4444' }}>
+                        SEVERITY: {(investigation.threat_alert.severity || 'MED').toUpperCase()}
+                      </span>
+                    </div>
+                    <div style={{ ...FONT, fontSize: '11px', color: '#8B9AB5', lineHeight: 1.6 }}>
+                      {investigation.threat_alert.explanation}
+                    </div>
                   </div>
-                  <div style={{ ...FONT, fontSize: '11px', color: '#8B9AB5', lineHeight: 1.6 }}>
-                    {investigation.threat_alert.explanation}
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </div>

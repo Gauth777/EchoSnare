@@ -28,8 +28,8 @@ class ContentAnalyzer:
     512MB free tier where torch/transformers would OOM.
     """
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.model = model
+    def __init__(self, model: str = "groq/compound-mini") -> None:
+        self.model = os.getenv("GROQ_MODEL", model)
         self._client = self._build_client()
 
     @staticmethod

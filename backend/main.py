@@ -7,8 +7,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from dotenv import load_dotenv
 
-# Neo4j + Groq credentials; on Render these come from real env vars instead
+# Load credentials from backend/.env, root/.env.local, or root/.env
 load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env.local")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,9 +39,14 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-@app.on_event("startup")
-async def startup() -> None:
+import threading
+
+def _safe_seed() -> None:
     try:
         seed_database()
-    except Exception as exc:  # Neo4j unreachable — JSON fallback keeps API usable
+    except Exception as exc:
         print(f"[startup] Neo4j seeding skipped: {exc}")
+
+@app.on_event("startup")
+async def startup() -> None:
+    threading.Thread(target=_safe_seed, daemon=True).start()

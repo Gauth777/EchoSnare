@@ -22,8 +22,8 @@ class ThreatAlert:
 class ThreatClassifier:
     """Use Groq if available, otherwise deterministic rules."""
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
-        self.model = model
+    def __init__(self, model: str = "groq/compound-mini") -> None:
+        self.model = os.getenv("GROQ_MODEL", model)
         self.client = self._build_client()
 
     def _build_client(self):

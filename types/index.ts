@@ -110,5 +110,9 @@ export interface InvestigationResult {
     edges: GraphEdge[]
   }
   synthesis_dossier: string
+  accounts_detected?: string[]
+  steps?: Array<{ agent: string; duration_ms: number; summary: string }>
+  threat_alert?: { threat_type: string; severity: string; explanation: string }
+  fact_check_matches?: Array<{ title: string; source: string; url: string; matched_terms: string[] }>
 }
 
