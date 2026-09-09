@@ -1,6 +1,7 @@
 'use client'
 
-import type { EvidenceItem, SourceStatus } from '@/types'
+import { useEffect, useState } from 'react'
+import type { ClaimAssessment, EvidenceItem, SourceStatus } from '@/types'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
 const BORDER = '1px solid #162032'
@@ -40,9 +41,54 @@ function statusBadge(status: string) {
   }
 }
 
+function claimPresentation(assessment?: ClaimAssessment) {
+  if (!assessment) return { label: 'ASSESSMENT UNAVAILABLE', color: '#64748B' }
+  switch (assessment.status) {
+    case 'CONTRADICTED':
+      return { label: 'NOT SUPPORTED', color: '#EF4444' }
+    case 'PARTIALLY_SUPPORTED':
+      return { label: 'SUPPORTED BY REPORTING', color: '#F59E0B' }
+    case 'SUPPORTED':
+      return { label: 'SUPPORTED', color: '#34D399' }
+    default:
+      return { label: 'NOT YET VERIFIED', color: '#94A3B8' }
+  }
+}
+
 export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
+  const [claimAssessment, setClaimAssessment] = useState<ClaimAssessment | undefined>(undefined)
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('echosnare_active_investigation')
+      if (saved) {
+        const parsed = JSON.parse(saved) as { claim_assessment?: ClaimAssessment }
+        if (parsed?.claim_assessment) setClaimAssessment(parsed.claim_assessment)
+      }
+    } catch {}
+  }, [evidence.length])
+
+  const claim = claimPresentation(claimAssessment)
+
   return (
     <div style={{ padding: 20, background: '#07090e', borderBottom: BORDER }}>
+      {claimAssessment && (
+        <div style={{ marginBottom: 18, padding: '12px 14px', background: '#04060a', border: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ ...MONO, fontSize: 9, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 5 }}>
+              CLAIM ASSESSMENT
+            </div>
+            <div style={{ ...MONO, fontSize: 16, fontWeight: 800, color: claim.color }}>
+              {claim.label}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ ...MONO, fontSize: 10, color: '#F4F7FB' }}>{Math.round(claimAssessment.confidence * 100)}% evidence confidence</div>
+            <div style={{ ...MONO, fontSize: 10, color: '#64748B', maxWidth: 540 }}>{claimAssessment.explanation}</div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 20 }}>
         <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 10 }}>
           SOURCE PROVENANCE & CHANNEL AVAILABILITY
