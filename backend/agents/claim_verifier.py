@@ -37,6 +37,12 @@ class ClaimAssessment:
         return asdict(self)
 
 
+def _get(item: Any, key: str, default: Any = "") -> Any:
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
+
 def _tokens(text: str) -> set[str]:
     words = re.findall(r"[a-zA-Z0-9]+", (text or "").lower())
     return {word for word in words if len(word) > 3 and word not in _STOPWORDS}
@@ -47,8 +53,8 @@ def _overlap(query: str, item_text: str) -> int:
 
 
 def assess_source(item: Any) -> SourceAssessment:
-    source_type = str(getattr(item, "source_type", "") or "")
-    source_name = str(getattr(item, "source_name", "") or "")
+    source_type = str(_get(item, "source_type", "") or "")
+    source_name = str(_get(item, "source_name", "") or "")
 
     if source_type == "fact_checker":
         return SourceAssessment(
@@ -87,12 +93,9 @@ def assess_claim(query: str, evidence: Iterable[Any]) -> ClaimAssessment:
     news_matches = []
 
     for item in items:
-        text = " ".join(
-            str(getattr(item, attr, "") or "")
-            for attr in ("title", "text")
-        )
+        text = " ".join(str(_get(item, attr, "") or "") for attr in ("title", "text"))
         overlap = _overlap(query, text)
-        source_type = str(getattr(item, "source_type", "") or "")
+        source_type = str(_get(item, "source_type", "") or "")
         if source_type == "fact_checker" and overlap >= 2:
             fact_checks.append(item)
         elif source_type == "web_news" and overlap >= 2:
@@ -109,9 +112,7 @@ def assess_claim(query: str, evidence: Iterable[Any]) -> ClaimAssessment:
             contradictory_sources=len(fact_checks),
         )
 
-    # Multiple independent news reports can support that an underlying event is being reported,
-    # but we deliberately do not label that as proven truth.
-    distinct_news_sources = {str(getattr(item, "source_name", "")) for item in news_matches if getattr(item, "source_name", None)}
+    distinct_news_sources = {str(_get(item, "source_name", "")) for item in news_matches if _get(item, "source_name", None)}
     if len(distinct_news_sources) >= 2:
         confidence = min(0.86, 0.62 + 0.06 * min(len(distinct_news_sources), 4))
         return ClaimAssessment(
@@ -137,7 +138,6 @@ def enrich_evidence(items: Iterable[Any]) -> list[dict[str, Any]]:
     enriched: list[dict[str, Any]] = []
     for item in items:
         payload = item.to_dict() if hasattr(item, "to_dict") else dict(item)
-        assessment = assess_source(item)
-        payload["source_assessment"] = assessment.to_dict()
+        payload["source_assessment"] = assess_source(item).to_dict()
         enriched.append(payload)
     return enriched
