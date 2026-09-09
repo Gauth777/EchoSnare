@@ -469,29 +469,86 @@ export default function WhatsAppAnalyzer() {
                 )}
 
                 {/* Threat alert */}
-                {investigation.threat_alert && (
-                  <div
-                    style={{
-                      border:          '1px solid #EF4444',
-                      backgroundColor: '#EF444426',
-                      padding:         '14px 16px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '6px' }}>
-                      <span style={{ ...FONT, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', color: '#EF4444' }}>
-                        THREAT ALERT
-                      </span>
-                      <span style={{ ...FONT, fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
-                        {investigation.threat_alert.threat_type || 'Coordinated Threat Activity'}
-                      </span>
-                      <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#EF4444' }}>
-                        SEVERITY: {(investigation.threat_alert.severity || 'MED').toUpperCase()}
-                      </span>
+                {investigation.threat_alert && (() => {
+                  const alertSeverity = (investigation.threat_alert.severity || 'MED').toUpperCase()
+                
+                  const alertColor =
+                    alertSeverity === 'HIGH'
+                      ? '#EF4444'
+                      : alertSeverity === 'LOW'
+                        ? '#22C55E'
+                        : '#F59E0B'
+                
+                  return (
+                    <div
+                      style={{
+                        border: `1px solid ${alertColor}`,
+                        backgroundColor:
+                          alertSeverity === 'HIGH'
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : alertSeverity === 'LOW'
+                              ? 'rgba(34, 197, 94, 0.15)'
+                              : 'rgba(245, 158, 11, 0.15)',
+                        padding: '14px 16px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '12px',
+                          marginBottom: '6px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...FONT,
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            color: alertColor,
+                          }}
+                        >
+                          THREAT ALERT
+                        </span>
+                
+                        <span
+                          style={{
+                            ...FONT,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#E2E8F0',
+                          }}
+                        >
+                          {investigation.threat_alert.threat_type || 'Coordinated Threat Activity'}
+                        </span>
+                
+                        <span
+                          style={{
+                            ...FONT,
+                            fontSize: '10px',
+                            letterSpacing: '0.1em',
+                            color: alertColor,
+                          }}
+                        >
+                          SEVERITY: {alertSeverity}
+                        </span>
+                      </div>
+                
+                      <div
+                        style={{
+                          ...FONT,
+                          fontSize: '11px',
+                          color: '#8B9AB5',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {investigation.threat_alert.explanation}
+                      </div>
                     </div>
-                    <div style={{ ...FONT, fontSize: '11px', color: '#8B9AB5', lineHeight: 1.6 }}>
-                      {investigation.threat_alert.explanation}
-                    </div>
-                  </div>
+                  )
+                })()}
                 )}
               </div>
             )}
