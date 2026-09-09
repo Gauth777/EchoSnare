@@ -1,4 +1,4 @@
-# ShadowTrace — Architecture Diagram
+# EchoSnare — Architecture Diagram
 
 *A 10-agent pipeline on a Neo4j AuraDB graph substrate, with live ingestion from Bluesky and Indian fact-checker feeds.*
 
@@ -143,7 +143,7 @@ RETURN a.handle, a.bot_score ORDER BY a.bot_score DESC
 
 ## 3. Live Account Intelligence — Execution Sequence
 
-The flow that proves ShadowTrace is not a mock: a **real handle**, ingested live, analysed by three agents through the same Cypher the seeded data uses.
+The flow that proves EchoSnare is not a mock: a **real handle**, ingested live, analysed by three agents through the same Cypher the seeded data uses.
 
 ```mermaid
 sequenceDiagram
@@ -466,4 +466,4 @@ flowchart LR
 
 ---
 
-*ShadowTrace — Detect. Trace. Neutralize.*
+*EchoSnare — Detect. Trace. Neutralize.*

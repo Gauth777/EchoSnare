@@ -44,7 +44,7 @@ interface InvestigationResult {
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const AGENT_COLORS: Record<string, string> = {
   WhatsAppAnalyzer:       '#22C55E',
@@ -85,11 +85,11 @@ function scoreColor(score: number): string {
 
 function ScoreBlock({ label, score }: { label: string; score: number }) {
   return (
-    <div style={{ flex: 1, textAlign: 'center', padding: '18px 8px' }}>
+    <div style={{ flex: 1, textAlign: 'center', padding: '18px 8px', background: '#04060a' }}>
       <div style={{ ...FONT, fontSize: '34px', fontWeight: 700, color: scoreColor(score), lineHeight: 1 }}>
         {score}
       </div>
-      <div style={{ ...FONT, fontSize: '9px', letterSpacing: '0.1em', color: '#4A5568', marginTop: '8px' }}>
+      <div style={{ ...FONT, fontSize: '9px', letterSpacing: '0.1em', color: '#94A3B8', marginTop: '8px' }}>
         {label}
       </div>
     </div>
@@ -145,10 +145,10 @@ export default function WhatsAppAnalyzer() {
     }
   }
 
-  const riskColor = result ? (RISK_COLOR[result.risk_level] ?? '#F59E0B') : '#1E2D4A'
+  const riskColor = result ? (RISK_COLOR[result.risk_level] ?? '#F59E0B') : '#162032'
 
   return (
-    <div style={{ border: BORDER, backgroundColor: '#0D1526' }}>
+    <div style={{ border: BORDER, backgroundColor: '#07090e' }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div
@@ -160,12 +160,13 @@ export default function WhatsAppAnalyzer() {
           height:         '36px',
           padding:        '0 16px',
           borderBottom:   BORDER,
+          background:     '#05070c',
           fontSize:       '10px',
           letterSpacing:  '0.1em',
         }}
       >
-        <span style={{ color: '#8B9AB5' }}>WHATSAPP FORWARD ANALYZER</span>
-        <span style={{ color: '#4A5568' }}>🇮🇳 India-specific detection</span>
+        <span style={{ color: '#00D4AA', fontWeight: 650 }}>WHATSAPP FORWARD ANALYZER</span>
+        <span style={{ color: '#94A3B8' }}>🇮🇳 India-specific detection</span>
       </div>
 
       <div style={{ padding: '16px' }}>
@@ -181,7 +182,7 @@ export default function WhatsAppAnalyzer() {
             fontSize:        '12px',
             lineHeight:      1.6,
             color:           '#E2E8F0',
-            backgroundColor: '#080E1A',
+            backgroundColor: '#04060a',
             border:          BORDER,
             padding:         '12px',
             resize:          'vertical',
@@ -199,8 +200,8 @@ export default function WhatsAppAnalyzer() {
                 ...FONT,
                 fontSize:        '10px',
                 letterSpacing:   '0.06em',
-                color:           '#8B9AB5',
-                backgroundColor: 'transparent',
+                color:           '#94A3B8',
+                backgroundColor: '#04060a',
                 border:          BORDER,
                 padding:         '6px 12px',
                 cursor:          'pointer',
@@ -221,11 +222,12 @@ export default function WhatsAppAnalyzer() {
             fontSize:        '12px',
             fontWeight:      700,
             letterSpacing:   '0.12em',
-            color:           text.trim().length >= 10 ? '#080E1A' : '#4A5568',
-            backgroundColor: text.trim().length >= 10 ? '#00D4AA' : '#111D35',
+            color:           text.trim().length >= 10 ? '#000000' : '#64748B',
+            backgroundColor: text.trim().length >= 10 ? '#00D4AA' : '#121a28',
             border:          'none',
             padding:         '12px',
             cursor:          text.trim().length >= 10 && !loading ? 'pointer' : 'not-allowed',
+            boxShadow:       text.trim().length >= 10 ? '0 0 15px rgba(0, 212, 170, 0.3)' : 'none',
           }}
         >
           {loading ? 'ANALYZING...' : 'ANALYZE FORWARD →'}
@@ -260,7 +262,7 @@ export default function WhatsAppAnalyzer() {
             </div>
 
             {/* Row 2 — dual scores + combined */}
-            <div style={{ display: 'flex', alignItems: 'stretch', border: BORDER }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', border: BORDER, background: '#04060a' }}>
               <ScoreBlock label="WA PATTERN SCORE" score={result.wa_pattern_score} />
               <div
                 style={{
@@ -274,7 +276,7 @@ export default function WhatsAppAnalyzer() {
                   padding:        '18px 8px',
                 }}
               >
-                <div style={{ ...FONT, fontSize: '9px', letterSpacing: '0.12em', color: '#4A5568', marginBottom: '8px' }}>
+                <div style={{ ...FONT, fontSize: '9px', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '8px' }}>
                   COMBINED
                 </div>
                 <div style={{ ...FONT, fontSize: '26px', fontWeight: 700, color: riskColor, lineHeight: 1 }}>
@@ -287,7 +289,7 @@ export default function WhatsAppAnalyzer() {
             {/* Row 3 — red flags */}
             {result.red_flags.length > 0 && (
               <div>
-                <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568', marginBottom: '8px' }}>
+                <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '8px' }}>
                   RED FLAGS DETECTED
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -298,7 +300,7 @@ export default function WhatsAppAnalyzer() {
                         ...FONT,
                         fontSize:        '11px',
                         color:           '#E2E8F0',
-                        backgroundColor: '#111D35',
+                        backgroundColor: '#04060a',
                         border:          BORDER,
                         borderLeft:      '2px solid #EF4444',
                         padding:         '8px 12px',
@@ -312,8 +314,8 @@ export default function WhatsAppAnalyzer() {
             )}
 
             {/* Row 4 — extracted claim */}
-            <div style={{ border: BORDER, backgroundColor: '#111D35', padding: '12px 14px' }}>
-              <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568', marginBottom: '6px' }}>
+            <div style={{ border: BORDER, backgroundColor: '#04060a', padding: '12px 14px' }}>
+              <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '6px' }}>
                 CORE CLAIM EXTRACTED
               </div>
               <div style={{ fontSize: '13px', color: '#E2E8F0', lineHeight: 1.6, fontStyle: 'italic' }}>
@@ -350,9 +352,9 @@ export default function WhatsAppAnalyzer() {
                 fontSize:        '12px',
                 fontWeight:      700,
                 letterSpacing:   '0.12em',
-                color:           '#7C3AED',
-                backgroundColor: 'transparent',
-                border:          '1px solid #7C3AED',
+                color:           '#00D4AA',
+                backgroundColor: 'rgba(0, 212, 170, 0.08)',
+                border:          '1px solid #00D4AA',
                 padding:         '12px',
                 cursor:          investigating ? 'wait' : 'pointer',
               }}
@@ -363,8 +365,8 @@ export default function WhatsAppAnalyzer() {
             {investigation && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {/* Agent pipeline timeline */}
-                <div style={{ border: BORDER, backgroundColor: '#111D35', padding: '14px' }}>
-                  <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568', marginBottom: '10px' }}>
+                <div style={{ border: BORDER, backgroundColor: '#04060a', padding: '14px' }}>
+                  <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '10px' }}>
                     AGENT PIPELINE — {investigation.steps.length} AGENTS EXECUTED
                   </div>
                   {investigation.steps.map((step, i) => (
@@ -396,7 +398,7 @@ export default function WhatsAppAnalyzer() {
                       <span style={{ ...FONT, fontSize: '11px', color: '#E2E8F0', flex: 1 }}>
                         {step.summary}
                       </span>
-                      <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', flexShrink: 0 }}>
+                      <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', flexShrink: 0 }}>
                         {step.duration_ms}ms
                       </span>
                     </div>
@@ -405,7 +407,7 @@ export default function WhatsAppAnalyzer() {
 
                 {/* Fact-check matches */}
                 {investigation.fact_check_matches.length > 0 && (
-                  <div style={{ border: '1px solid #3B82F6', backgroundColor: '#111D35', padding: '14px' }}>
+                  <div style={{ border: '1px solid #3B82F6', backgroundColor: '#04060a', padding: '14px' }}>
                     <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#3B82F6', marginBottom: '10px' }}>
                       ⚑ MATCHED DEBUNKED CLAIMS — LIVE FACT-CHECKER FEED
                     </div>
@@ -419,7 +421,7 @@ export default function WhatsAppAnalyzer() {
                         >
                           {match.title}
                         </a>
-                        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginTop: '3px' }}>
+                        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '3px' }}>
                           {match.source} · matched: {match.matched_terms.join(', ')}
                         </div>
                       </div>

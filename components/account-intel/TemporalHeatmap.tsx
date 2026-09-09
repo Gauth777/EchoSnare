@@ -41,7 +41,7 @@ type TooltipState = { x: number; y: number; cell: Cell } | null
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER   = '1px solid #1E2D4A'
+const BORDER   = '1px solid #162032'
 const BLOCKS   = 28                    // 7 days × 4 six-hour blocks
 const BLOCK_MS = 6 * 3600 * 1000
 const COORD_WINDOW_MS = 30_000
@@ -240,7 +240,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
             .attr('y', y(r) + gap / 2)
             .attr('width', Math.max(0, cellW - gap))
             .attr('height', rowH - gap)
-            .attr('fill', '#0D1526')
+            .attr('fill', '#04060a')
         }
       }
 
@@ -313,7 +313,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
     <div
       style={{
         border:          BORDER,
-        backgroundColor: '#0D1526',
+        backgroundColor: '#07090e',
         minHeight:       '380px',
         padding:         '12px',
         display:         'flex',
@@ -321,14 +321,14 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
         gap:             '12px',
       }}
     >
-      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#4A5568' }}>
+      <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.12em', color: '#94A3B8' }}>
         TEMPORAL COORDINATION
       </div>
 
       {/* Score header */}
       <div style={{ borderBottom: BORDER, paddingBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#8B9AB5' }}>
+          <span style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#CBD5E1' }}>
             TEMPORAL COORDINATION SCORE
           </span>
           <span style={{ ...FONT, fontSize: '20px', fontWeight: 700, color: '#E2E8F0', lineHeight: 1 }}>
@@ -338,7 +338,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
             {sev}
           </span>
         </div>
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginTop: '6px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '6px' }}>
           Flagged pairs: {data.flagged_pairs}&nbsp;&nbsp;&nbsp;&nbsp;Median delay: {data.median_delay_seconds}s
         </div>
       </div>
@@ -354,8 +354,8 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
               left:            Math.min(tooltip.x + 12, Math.max(0, width - 230)),
               top:             tooltip.y + 12,
               width:           '220px',
-              backgroundColor: '#080E1A',
-              border:          `1px solid ${tooltip.cell.coordinated ? '#EF4444' : '#1E2D4A'}`,
+              backgroundColor: '#04060a',
+              border:          `1px solid ${tooltip.cell.coordinated ? '#EF4444' : '#162032'}`,
               padding:         '10px',
               pointerEvents:   'none',
               zIndex:          10,
@@ -364,7 +364,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#E2E8F0', marginBottom: '4px' }}>
               {tooltip.cell.account}
             </div>
-            <div style={{ fontSize: '9px', color: '#4A5568', marginBottom: '6px' }}>
+            <div style={{ fontSize: '9px', color: '#94A3B8', marginBottom: '6px' }}>
               {new Date(tooltip.cell.posts[0].timestamp).toLocaleString(undefined, {
                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
               })}
@@ -376,7 +376,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
                 ⚠ COORDINATED — POSTED WITHIN 30s OF ANOTHER ACCOUNT
               </div>
             )}
-            <div style={{ fontSize: '10px', color: '#8B9AB5', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '10px', color: '#CBD5E1', lineHeight: 1.5 }}>
               {tooltip.cell.posts[0].text_preview}
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
         {[
           { color: '#00D4AA', opacity: 0.6, label: 'POST' },
           { color: '#EF4444', opacity: 0.95, label: 'COORDINATED (<30s)' },
-          { color: '#0D1526', opacity: 1, label: 'NO ACTIVITY', border: true },
+          { color: '#04060a', opacity: 1, label: 'NO ACTIVITY', border: true },
         ].map(item => (
           <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             <span
@@ -401,7 +401,7 @@ export default function TemporalHeatmap({ data, accounts }: Props) {
                 flexShrink:      0,
               }}
             />
-            <span style={{ ...FONT, fontSize: '9px', letterSpacing: '0.08em', color: '#4A5568' }}>
+            <span style={{ ...FONT, fontSize: '9px', letterSpacing: '0.08em', color: '#94A3B8' }}>
               {item.label}
             </span>
           </span>

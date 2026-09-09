@@ -20,13 +20,13 @@ export default function LiveClaimsCell() {
   }, [])
 
   return (
-    <div style={{ padding: '16px 24px' }}>
+    <div style={{ padding: '16px 24px', background: '#07090e' }}>
       <div
         style={{
           ...MONO,
           fontSize: '10px',
           letterSpacing: '0.1em',
-          color: '#4A5568',
+          color: '#94A3B8',
           marginBottom: '10px',
         }}
       >
@@ -37,7 +37,7 @@ export default function LiveClaimsCell() {
           ...MONO,
           fontSize: '32px',
           fontWeight: 700,
-          color: '#22C55E',
+          color: '#00D4AA',
           lineHeight: 1,
           letterSpacing: '-0.01em',
         }}

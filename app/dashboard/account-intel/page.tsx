@@ -12,7 +12,7 @@ import VerdictPanel from '@/components/account-intel/VerdictPanel'
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 const MAX_ACCOUNTS = 10
 
 const QUICK_SETS = [
@@ -93,24 +93,24 @@ export default function AccountIntelPage() {
   const canRun = handles.length >= 2 && !analyzing
 
   return (
-    <div style={{ borderTop: BORDER, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ borderTop: BORDER, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#000000', minHeight: '100%' }}>
       <style>{'@keyframes ai-spin { to { transform: rotate(360deg); } }'}</style>
 
       {/* ── Section 1 — Account Input Panel ─────────────────────────────────── */}
-      <div style={{ border: BORDER, backgroundColor: '#0D1526', padding: '20px' }}>
+      <div style={{ border: BORDER, backgroundColor: '#07090e', padding: '20px' }}>
         <div
           style={{
             ...FONT,
             fontSize:      '13px',
             fontWeight:    700,
             letterSpacing: '0.18em',
-            color:         '#E2E8F0',
+            color:         '#00D4AA',
             marginBottom:  '4px',
           }}
         >
           ACCOUNT INTELLIGENCE
         </div>
-        <div style={{ ...FONT, fontSize: '11px', color: '#4A5568', marginBottom: '16px' }}>
+        <div style={{ ...FONT, fontSize: '11px', color: '#94A3B8', marginBottom: '16px' }}>
           Analyze whether a set of accounts is operated by the same entity
         </div>
 
@@ -123,7 +123,7 @@ export default function AccountIntelPage() {
             alignItems:      'center',
             gap:             '6px',
             border:          BORDER,
-            backgroundColor: '#080E1A',
+            backgroundColor: '#04060a',
             padding:         '8px',
             cursor:          'text',
             marginBottom:    '12px',
@@ -139,7 +139,7 @@ export default function AccountIntelPage() {
                 gap:             '6px',
                 fontSize:        '11px',
                 color:           '#E2E8F0',
-                backgroundColor: '#111D35',
+                backgroundColor: '#0a101d',
                 border:          BORDER,
                 padding:         '3px 8px',
               }}
@@ -152,7 +152,7 @@ export default function AccountIntelPage() {
                   ...FONT,
                   background: 'none',
                   border:     'none',
-                  color:      '#4A5568',
+                  color:      '#94A3B8',
                   cursor:     'pointer',
                   fontSize:   '11px',
                   padding:    0,
@@ -188,7 +188,7 @@ export default function AccountIntelPage() {
         </div>
 
         {/* Counter */}
-        <div style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginBottom: '12px' }}>
+        <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginBottom: '12px' }}>
           {handles.length} / {MAX_ACCOUNTS} accounts
         </div>
 
@@ -202,8 +202,8 @@ export default function AccountIntelPage() {
                 ...FONT,
                 fontSize:        '10px',
                 letterSpacing:   '0.06em',
-                color:           '#8B9AB5',
-                backgroundColor: 'transparent',
+                color:           '#94A3B8',
+                backgroundColor: '#04060a',
                 border:          BORDER,
                 padding:         '6px 12px',
                 cursor:          'pointer',
@@ -228,11 +228,12 @@ export default function AccountIntelPage() {
             fontSize:        '12px',
             fontWeight:      700,
             letterSpacing:   '0.12em',
-            color:           canRun || analyzing ? '#080E1A' : '#4A5568',
-            backgroundColor: canRun || analyzing ? '#00D4AA' : '#111D35',
+            color:           canRun ? '#000000' : '#64748B',
+            backgroundColor: canRun ? '#00D4AA' : '#121a28',
             border:          'none',
             padding:         '12px',
             cursor:          canRun ? 'pointer' : 'not-allowed',
+            boxShadow:       canRun ? '0 0 15px rgba(0, 212, 170, 0.3)' : 'none',
           }}
         >
           {analyzing ? (
@@ -243,7 +244,7 @@ export default function AccountIntelPage() {
                   display:          'inline-block',
                   width:            '12px',
                   height:           '12px',
-                  border:           '2px solid #080E1A',
+                  border:           '2px solid #000000',
                   borderTopColor:   'transparent',
                   borderRadius:     '50%',
                   animation:        'ai-spin 0.7s linear infinite',

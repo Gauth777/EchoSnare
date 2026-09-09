@@ -21,7 +21,7 @@ interface AlertItem {
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
 }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const SEV_COLOR: Record<Severity, string> = {
   HIGH: '#EF4444',
@@ -93,7 +93,7 @@ const ALL_ALERTS: AlertItem[] = [
 function buildExportPayload(alerts: AlertItem[]) {
   return {
     export_timestamp: new Date().toISOString(),
-    generated_by:    'ShadowTrace v1.0',
+    generated_by:    'EchoSnare v1.0',
     campaigns: [
       { id: 'campaign-001', name: 'Operation Pulse', threat_level: 'HIGH', confidence: 0.94, accounts_flagged: 847,  start_time: '2026-05-14T02:17:00Z' },
       { id: 'campaign-002', name: 'MedFear',         threat_level: 'HIGH', confidence: 0.91, accounts_flagged: 312,  start_time: '2026-06-01T08:45:00Z' },
@@ -139,7 +139,8 @@ function FilterPill({
         border:          active ? 'none' : BORDER,
         cursor:          'pointer',
         backgroundColor: active ? (color ?? '#00D4AA') : 'transparent',
-        color:           active ? '#080E1A' : '#4A5568',
+        color:           active ? '#000000' : '#94A3B8',
+        borderRadius:    '2px',
       }}
     >
       {label}
@@ -159,7 +160,7 @@ function AlertCard({ alert }: { alert: AlertItem }) {
     <div
       className={`st-alert-card sev-${alert.severity}`}
       style={{
-        backgroundColor: '#111D35',
+        backgroundColor: '#04060a',
         borderBottom:    BORDER,
         padding:         '14px 20px',
       }}
@@ -181,8 +182,9 @@ function AlertCard({ alert }: { alert: AlertItem }) {
             letterSpacing:   '0.1em',
             padding:         '2px 7px',
             backgroundColor: SEV_COLOR[alert.severity],
-            color:           '#080E1A',
+            color:           '#000000',
             flexShrink:      0,
+            borderRadius:    '2px',
           }}
         >
           {alert.severity}
@@ -194,18 +196,19 @@ function AlertCard({ alert }: { alert: AlertItem }) {
             fontSize:   '10px',
             color:      CAMP_COLOR[alert.campaign],
             letterSpacing: '0.04em',
+            fontWeight: 600,
           }}
         >
           {alert.campaign}
         </span>
 
-        <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', marginLeft: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginLeft: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>
           {alert.time}
         </span>
       </div>
 
       {/* Row 2: message */}
-      <div style={{ ...FONT, fontSize: '12px', color: '#E2E8F0', lineHeight: 1.65, marginBottom: '10px' }}>
+      <div style={{ ...FONT, fontSize: '12px', color: '#CBD5E1', lineHeight: 1.65, marginBottom: '10px' }}>
         {alert.message}
       </div>
 
@@ -223,6 +226,7 @@ function AlertCard({ alert }: { alert: AlertItem }) {
             color:           CAMP_COLOR[alert.campaign],
             backgroundColor: 'transparent',
             cursor:          'pointer',
+            borderRadius:    '2px',
           }}
         >
           VIEW NETWORK →
@@ -257,7 +261,7 @@ export default function AlertsPage() {
     const url      = URL.createObjectURL(blob)
     const a        = document.createElement('a')
     a.href         = url
-    a.download     = `shadowtrace-evidence-${new Date().toISOString().slice(0, 10)}.json`
+    a.download     = `echosnare-evidence-${new Date().toISOString().slice(0, 10)}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -268,7 +272,7 @@ export default function AlertsPage() {
   const CAMPAIGNS: CampaignName[] = ['Operation Pulse', 'MedFear', 'ReviewStorm']
 
   return (
-    <div style={{ borderTop: BORDER }}>
+    <div style={{ borderTop: BORDER, backgroundColor: '#000000', minHeight: '100%' }}>
 
       {/* ── Filter bar ────────────────────────────────────────────────────── */}
       <div
@@ -279,7 +283,7 @@ export default function AlertsPage() {
           gap:            '8px',
           padding:        '10px 20px',
           borderBottom:   BORDER,
-          backgroundColor:'#080E1A',
+          backgroundColor:'#05070c',
         }}
       >
         {/* Severity filter */}
@@ -291,7 +295,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Divider */}
-        <span style={{ color: '#1E2D4A', fontSize: '18px', lineHeight: 1, userSelect: 'none' }}>|</span>
+        <span style={{ color: '#162032', fontSize: '18px', lineHeight: 1, userSelect: 'none' }}>|</span>
 
         {/* Campaign filter */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -309,7 +313,7 @@ export default function AlertsPage() {
 
         {/* Spacer + alert count + export button */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ ...FONT, fontSize: '10px', color: '#4A5568', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+          <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
             {`Showing ${filtered.length} of ${ALL_ALERTS.length} alerts`}
           </span>
 
@@ -319,13 +323,15 @@ export default function AlertsPage() {
               ...FONT,
               padding:         '6px 16px',
               fontSize:        '10px',
-              fontWeight:      600,
+              fontWeight:      700,
               letterSpacing:   '0.1em',
-              border:          '1px solid #00D4AA',
-              color:           '#00D4AA',
-              backgroundColor: 'transparent',
+              border:          'none',
+              color:           '#000000',
+              backgroundColor: '#00D4AA',
+              boxShadow:       '0 0 15px rgba(0, 212, 170, 0.3)',
               cursor:          'pointer',
               whiteSpace:      'nowrap',
+              borderRadius:    '2px',
             }}
           >
             EXPORT EVIDENCE PACKAGE
@@ -340,7 +346,7 @@ export default function AlertsPage() {
             ...FONT,
             padding:   '48px',
             textAlign: 'center',
-            color:     '#2A3F5F',
+            color:     '#94A3B8',
             fontSize:  '12px',
           }}
         >
@@ -361,7 +367,7 @@ export default function AlertsPage() {
             position:        'fixed',
             bottom:          '28px',
             right:           '28px',
-            backgroundColor: '#0D1526',
+            backgroundColor: '#07090e',
             border:          '1px solid #00D4AA',
             padding:         '12px 20px',
             zIndex:          200,
@@ -372,6 +378,7 @@ export default function AlertsPage() {
             fontSize:        '12px',
             color:           '#00D4AA',
             letterSpacing:   '0.04em',
+            borderRadius:    '2px',
           }}
         >
           <span style={{ fontSize: '14px', lineHeight: 1 }}>✓</span>

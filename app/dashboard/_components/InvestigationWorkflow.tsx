@@ -13,8 +13,8 @@ export default function InvestigationWorkflow({ stages }: Props) {
   if (!stages || stages.length === 0) return null
 
   return (
-    <div style={{ padding: '16px 20px', background: '#0B1423', borderBottom: '1px solid #1E2D4A' }}>
-      <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#8798B1', letterSpacing: '0.12em', marginBottom: 12 }}>
+    <div style={{ padding: '16px 20px', background: '#05070c', borderBottom: '1px solid #162032' }}>
+      <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 12 }}>
         AUTOMATED PIPELINE EXECUTION STAGES
       </div>
 
@@ -22,21 +22,21 @@ export default function InvestigationWorkflow({ stages }: Props) {
         {stages.map((st, idx) => {
           const isDone = st.status === 'completed'
           const isLimited = st.status === 'limited'
-          const badgeColor = isDone ? '#34D399' : isLimited ? '#F59E0B' : '#EF4444'
+          const badgeColor = isDone ? '#00D4AA' : isLimited ? '#F59E0B' : '#EF4444'
 
           return (
             <div
               key={st.stage_id}
               style={{
-                background: '#101B2E',
-                border: `1px solid ${isDone ? '#1E385B' : '#283850'}`,
+                background: '#04060a',
+                border: `1px solid ${isDone ? 'rgba(0, 212, 170, 0.25)' : '#162032'}`,
                 borderTop: `3px solid ${badgeColor}`,
                 padding: '10px 12px',
                 borderRadius: '2px',
               }}
             >
               <div style={{ ...MONO, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 9, color: '#8094B0', letterSpacing: '0.08em' }}>
+                <span style={{ fontSize: 9, color: '#94A3B8', letterSpacing: '0.08em' }}>
                   STEP 0{idx + 1}
                 </span>
                 <span style={{ fontSize: 9, color: badgeColor, fontWeight: 700 }}>

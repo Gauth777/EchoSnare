@@ -1,4 +1,4 @@
-# ShadowTrace — Technical Documentation
+# EchoSnare — Technical Documentation
 
 *10 agents, a Neo4j AuraDB graph substrate, and live ingestion from Bluesky and Indian fact-checker feeds.*
 
@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-ShadowTrace is a multi-agent threat-intelligence system for **coordinated misinformation campaigns**. Unlike fact-checkers, which evaluate individual posts, ShadowTrace analyses the **infrastructure** behind misinformation — mapping account graphs, materialising coordination edges, clustering synchronised amplifiers, and generating structured threat assessments.
+EchoSnare is a multi-agent threat-intelligence system for **coordinated misinformation campaigns**. Unlike fact-checkers, which evaluate individual posts, EchoSnare analyses the **infrastructure** behind misinformation — mapping account graphs, materialising coordination edges, clustering synchronised amplifiers, and generating structured threat assessments.
 
 **Live Deployment:** https://shadowtrace-bay.vercel.app
 **Source Code:** https://github.com/uttampreet-dev/ShadowTrace
@@ -597,4 +597,4 @@ Open `http://localhost:3000`. To see the live path immediately: **Account Intel 
 
 ---
 
-*ShadowTrace — Detect. Trace. Neutralize.*
+*EchoSnare — Detect. Trace. Neutralize.*

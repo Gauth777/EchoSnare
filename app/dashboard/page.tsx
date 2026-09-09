@@ -10,7 +10,7 @@ import InvestigationWorkflow from './_components/InvestigationWorkflow'
 import EvidencePanel from './_components/EvidencePanel'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 const TIMELINE_DATA = [
   { name: 'Operation Pulse', threat: 'HIGH', color: '#EF4444', activity: [2, 3, 4, 9, 10, 13, 14, 15, 20, 21, 22, 23] },
@@ -29,7 +29,7 @@ function SectionHeader({ title, detail }: { title: string; detail?: string }) {
         minHeight: 46,
         padding: '0 20px',
         borderBottom: BORDER,
-        background: '#0B1423',
+        background: '#05070c',
         color: '#E2E8F0',
         fontSize: 11,
         fontWeight: 700,
@@ -44,7 +44,7 @@ function SectionHeader({ title, detail }: { title: string; detail?: string }) {
 
 function MetricCell({ label, value, valueColor, borderRight = true }: { label: string; value: string; valueColor?: string; borderRight?: boolean }) {
   return (
-    <div style={{ padding: '18px 20px', borderRight: borderRight ? BORDER : 'none', background: '#0D1728' }}>
+    <div style={{ padding: '18px 20px', borderRight: borderRight ? BORDER : 'none', background: '#07090e' }}>
       <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 8 }}>{label}</div>
       <div style={{ ...MONO, fontSize: 30, fontWeight: 800, lineHeight: 1.05, color: valueColor ?? '#F4F7FB' }}>{value}</div>
     </div>
@@ -54,7 +54,7 @@ function MetricCell({ label, value, valueColor, borderRight = true }: { label: s
 function ActivityTimeline() {
   const HOURS = Array.from({ length: 24 }, (_, i) => i)
   return (
-    <div style={{ padding: '20px', background: '#0D1728' }}>
+    <div style={{ padding: '20px', background: '#07090e' }}>
       <div style={{ display: 'flex', marginLeft: 166, marginBottom: 8 }}>
         {HOURS.map(h => (
           <div key={h} style={{ width: `${100 / 24}%`, ...MONO, fontSize: 9, color: h % 4 === 0 ? '#94A3B8' : 'transparent' }}>
@@ -77,8 +77,8 @@ function ActivityTimeline() {
                   style={{
                     flex: 1,
                     height: 18,
-                    border: `1px solid ${active ? row.color : '#1E2D4A'}`,
-                    background: active ? row.color : '#0A1220',
+                    border: `1px solid ${active ? row.color : '#162032'}`,
+                    background: active ? row.color : '#04060a',
                     opacity: active ? 0.85 : 1,
                   }}
                 />
@@ -98,9 +98,9 @@ export default function OverviewPage() {
   const [activeInvestigation, setActiveInvestigation] = useState<InvestigationResult | null>(null)
 
   return (
-    <div style={{ background: '#080E1A', minHeight: '100vh', color: '#F4F7FB' }}>
+    <div style={{ background: '#000000', minHeight: '100vh', color: '#F4F7FB' }}>
       {/* Workstation Header */}
-      <div style={{ padding: '24px 24px 18px', borderBottom: BORDER, background: '#0B1423' }}>
+      <div style={{ padding: '24px 24px 18px', borderBottom: BORDER, background: '#05070c' }}>
         <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#00D4AA', letterSpacing: '0.18em', marginBottom: 6 }}>
           ECHOSNARE THREAT INTELLIGENCE WORKSTATION
         </div>
@@ -112,7 +112,7 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      <section style={{ margin: '20px 24px', border: BORDER, background: '#0D1728' }}>
+      <section style={{ margin: '20px 24px', border: BORDER, background: '#07090e' }}>
         {/* System Metric Bar */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr) 1.3fr', borderBottom: BORDER }}>
           <MetricCell label="BENCHMARK CAMPAIGNS" value="3" valueColor="#EF4444" />
@@ -132,10 +132,10 @@ export default function OverviewPage() {
             <InvestigationWorkflow stages={activeInvestigation.stages} />
 
             {/* Investigation Dossier Summary */}
-            <div style={{ padding: 22, background: '#0F1B2E', borderBottom: BORDER }}>
+            <div style={{ padding: 22, background: '#07090e', borderBottom: BORDER }}>
               <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24, alignItems: 'start' }}>
                 {/* Threat Score Card */}
-                <div style={{ background: '#0A1322', border: BORDER, padding: 18, borderRadius: 2 }}>
+                <div style={{ background: '#04060a', border: BORDER, padding: 18, borderRadius: 2 }}>
                   <div style={{ ...MONO, fontSize: 10, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 8 }}>
                     THREAT RISK SCORE
                   </div>
@@ -162,7 +162,7 @@ export default function OverviewPage() {
                 </div>
 
                 {/* Synthesis Dossier Text */}
-                <div style={{ background: '#0A1322', border: BORDER, borderLeft: '4px solid #00D4AA', padding: 18 }}>
+                <div style={{ background: '#04060a', border: BORDER, borderLeft: '4px solid #00D4AA', padding: 18 }}>
                   <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#00D4AA', letterSpacing: '0.12em', marginBottom: 8 }}>
                     EVIDENCE-BACKED DOSSIER SYNTHESIS
                   </div>
@@ -184,12 +184,12 @@ export default function OverviewPage() {
               {/* Key Findings List */}
               {activeInvestigation.key_findings && activeInvestigation.key_findings.length > 0 && (
                 <div style={{ marginTop: 18 }}>
-                  <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#8798B1', letterSpacing: '0.12em', marginBottom: 10 }}>
+                  <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 10 }}>
                     KEY INVESTIGATION FINDINGS
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat( auto-fit, minmax(280px, 1fr) )', gap: 12 }}>
                     {activeInvestigation.key_findings.map((f, i) => (
-                      <div key={i} style={{ background: '#0A1322', border: BORDER, padding: 14 }}>
+                      <div key={i} style={{ background: '#04060a', border: BORDER, padding: 14 }}>
                         <div style={{ fontSize: 13, fontWeight: 650, color: '#F4F7FB', marginBottom: 4 }}>
                           {f.title}
                         </div>

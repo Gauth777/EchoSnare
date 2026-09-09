@@ -29,7 +29,7 @@ def _clean(html: str) -> str:
 
 
 def _fetch_entries(url: str) -> List[Dict[str, str]]:
-    req = urllib.request.Request(url, headers={"User-Agent": "ShadowTrace/1.0 (+fact-check monitor)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "EchoSnare/1.0 (+fact-check monitor)"})
     with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT_SECONDS) as resp:
         raw = resp.read()
 

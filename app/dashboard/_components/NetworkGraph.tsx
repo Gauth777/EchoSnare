@@ -109,7 +109,7 @@ export default function NetworkGraph({ nodes, edges, campaignName, onReady }: Pr
       // ── Background ──────────────────────────────────────────────────────────
       svg.append('rect')
         .attr('width', width).attr('height', height)
-        .attr('fill', '#080E1A')
+        .attr('fill', '#000000')
 
       const defs = svg.append('defs')
       const gridId = `stgrid-${campaignName.replace(/\W+/g, '')}`
@@ -120,13 +120,13 @@ export default function NetworkGraph({ nodes, edges, campaignName, onReady }: Pr
         .append('path')
         .attr('d', 'M 24 0 L 0 0 0 24')
         .attr('fill', 'none')
-        .attr('stroke', '#1E2D4A')
-        .attr('stroke-width', '0.3')
+        .attr('stroke', '#162032')
+        .attr('stroke-width', '0.4')
 
       svg.append('rect')
         .attr('width', width).attr('height', height)
         .attr('fill', `url(#${gridId})`)
-        .attr('opacity', 0.4)
+        .attr('opacity', 0.5)
 
       // ── Force simulation ─────────────────────────────────────────────────
       const simulation = d3.forceSimulation<SimNode>(simNodes)
@@ -239,7 +239,7 @@ export default function NetworkGraph({ nodes, edges, campaignName, onReady }: Pr
         .attr('class', 'st-bot-label')
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
-        .attr('fill', '#080E1A')
+        .attr('fill', '#FFFFFF')
         .attr('font-size', '7')
         .attr('font-weight', '700')
         .attr('font-family', FONT)
@@ -310,8 +310,8 @@ export default function NetworkGraph({ nodes, edges, campaignName, onReady }: Pr
             position:        'absolute',
             left:            tipLeft,
             top:             tipTop,
-            backgroundColor: '#0D1526',
-            border:          '1px solid #1E2D4A',
+            backgroundColor: '#04060a',
+            border:          '1px solid #162032',
             padding:         '10px 14px',
             fontFamily:      FONT,
             fontSize:        '11px',

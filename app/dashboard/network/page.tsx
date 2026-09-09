@@ -1,6 +1,6 @@
 import NetworkGraphPanel from '../_components/NetworkGraphPanel'
 
-const BORDER = '1px solid #1E2D4A'
+const BORDER = '1px solid #162032'
 
 // Full-width, full-height graph — fills the main content area completely.
 // Campaign selector tabs are built into NetworkGraphPanel.
@@ -13,6 +13,7 @@ export default function NetworkPage() {
         display:       'flex',
         flexDirection: 'column',
         overflow:      'hidden',
+        background:    '#000000',
       }}
     >
       <NetworkGraphPanel />
