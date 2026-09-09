@@ -53,6 +53,21 @@ export interface AnalysisResult {
   indicators: string[]
 }
 
+export interface SourceAssessment {
+  label: string
+  role: string
+  explanation: string
+}
+
+export interface ClaimAssessment {
+  status: 'SUPPORTED' | 'PARTIALLY_SUPPORTED' | 'CONTRADICTED' | 'UNVERIFIED'
+  label: string
+  explanation: string
+  confidence: number
+  corroborating_sources: number
+  contradictory_sources: number
+}
+
 export interface EvidenceItem {
   id: string
   source_type: string
@@ -65,6 +80,7 @@ export interface EvidenceItem {
   text: string
   confidence: number
   evidence_type: string
+  source_assessment?: SourceAssessment
 }
 
 export interface SourceStatus {
@@ -103,6 +119,9 @@ export interface InvestigationResult {
   threat_score: number
   risk_level: ThreatLevel
   confidence: number
+  evidence_confidence?: number
+  score_basis?: string
+  claim_assessment?: ClaimAssessment
   narrative_category: string
   key_findings: KeyFinding[]
   graph: {
@@ -112,7 +131,7 @@ export interface InvestigationResult {
   synthesis_dossier: string
   accounts_detected?: string[]
   steps?: Array<{ agent: string; duration_ms: number; summary: string }>
-  threat_alert?: { threat_type: string; severity: string; explanation: string }
+  threat_alert?: { threat_type: string; severity: string; explanation: string; confidence_score?: number; campaign_detected?: boolean }
   fact_check_matches?: Array<{ title: string; source: string; url: string; matched_terms: string[] }>
 }
 
