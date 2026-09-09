@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from agents.claim_verifier import assess_claim, enrich_evidence
 from api.routes import router
 from db.seed import seed_database
 
@@ -32,14 +33,7 @@ _SIMULATED_HANDLES = {
 
 
 def _sanitize_investigation_payload(data: dict) -> dict:
-    """Normalize investigation output before it reaches the analyst UI.
-
-    The legacy investigation route still contains two demo-era behaviors:
-    a hard 82-point floor when any fact-check is present, and synthetic
-    propagation accounts when fewer than two real accounts are found.
-    This boundary keeps the public response evidence-backed without changing
-    the legacy route implementation in place.
-    """
+    """Normalize investigation output before it reaches the analyst UI."""
     stages = data.get("stages") or []
 
     # Recover the actual content-risk value produced during stage 5.
@@ -55,7 +49,6 @@ def _sanitize_investigation_payload(data: dict) -> dict:
         final_score = content_score
         risk_level = "HIGH" if final_score >= 70 else "MED" if final_score >= 40 else "LOW"
 
-        # The old threat stage was computed before this response normalization.
         for stage in stages:
             if stage.get("stage_id") == "SCORING_THREAT":
                 detail = str(stage.get("detail", ""))
@@ -68,7 +61,6 @@ def _sanitize_investigation_payload(data: dict) -> dict:
         data["threat_score"] = final_score
         data["misinformation_score"] = final_score
         data["risk_level"] = risk_level
-        data["confidence"] = round(min(0.99, 0.4 + final_score / 150), 2)
         data["score_basis"] = "Content risk index from retrieved evidence"
 
         threat_alert = data.get("threat_alert")
@@ -76,6 +68,14 @@ def _sanitize_investigation_payload(data: dict) -> dict:
             threat_alert["severity"] = risk_level
             threat_alert["confidence_score"] = final_score
             threat_alert["campaign_detected"] = final_score >= 70
+
+    # Evidence-backed claim assessment is deliberately independent of threat score.
+    query = str(data.get("query", ""))
+    raw_evidence = data.get("evidence") or []
+    claim_assessment = assess_claim(query, raw_evidence)
+    data["claim_assessment"] = claim_assessment.to_dict()
+    data["evidence"] = enrich_evidence(raw_evidence)
+    data["evidence_confidence"] = claim_assessment.confidence
 
     # Never expose synthetic propagation accounts as discovered OSINT.
     graph = data.get("graph")
