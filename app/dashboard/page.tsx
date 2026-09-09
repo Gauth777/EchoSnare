@@ -26,6 +26,8 @@ function SectionHeader({ title, detail }: { title: string; detail?: string }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 12,
+        flexWrap: 'wrap',
         minHeight: 46,
         padding: '0 20px',
         borderBottom: BORDER,
@@ -44,7 +46,7 @@ function SectionHeader({ title, detail }: { title: string; detail?: string }) {
 
 function MetricCell({ label, value, valueColor, borderRight = true }: { label: string; value: string; valueColor?: string; borderRight?: boolean }) {
   return (
-    <div style={{ padding: '18px 20px', borderRight: borderRight ? BORDER : 'none', background: '#07090e' }}>
+    <div style={{ minWidth: 0, padding: '18px 20px', borderRight: borderRight ? BORDER : 'none', background: '#07090e' }}>
       <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 8 }}>{label}</div>
       <div style={{ ...MONO, fontSize: 30, fontWeight: 800, lineHeight: 1.05, color: valueColor ?? '#F4F7FB' }}>{value}</div>
     </div>
@@ -54,8 +56,8 @@ function MetricCell({ label, value, valueColor, borderRight = true }: { label: s
 function ActivityTimeline() {
   const HOURS = Array.from({ length: 24 }, (_, i) => i)
   return (
-    <div style={{ padding: '20px', background: '#07090e' }}>
-      <div style={{ display: 'flex', marginLeft: 166, marginBottom: 8 }}>
+    <div style={{ padding: '20px', background: '#07090e', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', marginLeft: 166, marginBottom: 8, minWidth: 0 }}>
         {HOURS.map(h => (
           <div key={h} style={{ width: `${100 / 24}%`, ...MONO, fontSize: 9, color: h % 4 === 0 ? '#94A3B8' : 'transparent' }}>
             {`${String(h).padStart(2, '0')}:00`}
@@ -63,12 +65,12 @@ function ActivityTimeline() {
         ))}
       </div>
       {TIMELINE_DATA.map(row => (
-        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, minWidth: 0 }}>
           <div style={{ width: 156, flexShrink: 0, ...MONO, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#CBD5E1' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: row.color }} />
             {row.name}
           </div>
-          <div style={{ flex: 1, display: 'flex', gap: 2 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 2 }}>
             {HOURS.map(h => {
               const active = row.activity.includes(h as never)
               return (
@@ -76,6 +78,7 @@ function ActivityTimeline() {
                   key={h}
                   style={{
                     flex: 1,
+                    minWidth: 0,
                     height: 18,
                     border: `1px solid ${active ? row.color : '#162032'}`,
                     background: active ? row.color : '#04060a',
@@ -87,7 +90,7 @@ function ActivityTimeline() {
           </div>
         </div>
       ))}
-      <div style={{ marginLeft: `${166 + (14 / 24) * 100}%`, ...MONO, fontSize: 9, color: '#00D4AA', letterSpacing: '0.06em' }}>
+      <div style={{ marginLeft: 166, ...MONO, fontSize: 9, color: '#00D4AA', letterSpacing: '0.06em' }}>
         ● LIVE CURRENT
       </div>
     </div>
@@ -97,7 +100,6 @@ function ActivityTimeline() {
 export default function OverviewPage() {
   const [activeInvestigation, setActiveInvestigation] = useState<InvestigationResult | null>(null)
 
-  // Restore previous investigation state on mount across tab navigation
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('echosnare_active_investigation')
@@ -119,7 +121,7 @@ export default function OverviewPage() {
   }
 
   return (
-    <div style={{ background: '#000000', minHeight: '100vh', color: '#F4F7FB' }}>
+    <div style={{ background: '#000000', minHeight: '100vh', width: '100%', overflowX: 'hidden', color: '#F4F7FB' }}>
       {/* Workstation Header */}
       <div style={{ padding: '24px 24px 18px', borderBottom: BORDER, background: '#05070c' }}>
         <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#00D4AA', letterSpacing: '0.18em', marginBottom: 6 }}>
@@ -133,9 +135,9 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      <section style={{ margin: '20px 24px', border: BORDER, background: '#07090e' }}>
+      <section style={{ width: 'calc(100% - 32px)', maxWidth: 1280, margin: '16px auto', boxSizing: 'border-box', border: BORDER, background: '#07090e' }}>
         {/* System Metric Bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr) 1.3fr', borderBottom: BORDER }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', borderBottom: BORDER }}>
           <MetricCell label="BENCHMARK CAMPAIGNS" value="3" valueColor="#EF4444" />
           <MetricCell label="RETRIEVED SOURCES TODAY" value={activeInvestigation ? `${activeInvestigation.evidence.length}` : '14'} valueColor="#F59E0B" />
           <MetricCell label="LIVE ALERTS" value="18" />
@@ -148,137 +150,78 @@ export default function OverviewPage() {
 
         {/* Dynamic Investigation Results (When Active) */}
         {activeInvestigation && (
-          <div>
+          <div style={{ minWidth: 0 }}>
             {/* Action Bar with Reset and Navigation */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: '#05070c', borderBottom: BORDER, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ ...MONO, fontSize: 11, color: '#00D4AA', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 8px #00D4AA' }} />
-                <span>ACTIVE PROMPT INVESTIGATION: &quot;{activeInvestigation.query.length > 50 ? activeInvestigation.query.slice(0, 48) + '…' : activeInvestigation.query}&quot;</span>
+              <div style={{ ...MONO, minWidth: 0, fontSize: 11, color: '#00D4AA', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, flexShrink: 0, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 8px #00D4AA' }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ACTIVE PROMPT INVESTIGATION: &quot;{activeInvestigation.query.length > 50 ? activeInvestigation.query.slice(0, 48) + '…' : activeInvestigation.query}&quot;</span>
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <a
-                  href="#st-graph-section"
-                  style={{
-                    ...MONO,
-                    fontSize: 10,
-                    fontWeight: 750,
-                    color: '#000000',
-                    background: '#00D4AA',
-                    padding: '5px 12px',
-                    textDecoration: 'none',
-                    borderRadius: 2,
-                    boxShadow: '0 0 10px rgba(0,212,170,0.3)',
-                  }}
-                >
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <a href="#st-graph-section" style={{ ...MONO, fontSize: 10, fontWeight: 750, color: '#000000', background: '#00D4AA', padding: '5px 12px', textDecoration: 'none', borderRadius: 2, boxShadow: '0 0 10px rgba(0,212,170,0.3)' }}>
                   VIEW LIVE GRAPH ↓
                 </a>
                 {activeInvestigation.accounts_detected && activeInvestigation.accounts_detected.length > 0 && (
-                  <a
-                    href="/dashboard/account-intel"
-                    style={{
-                      ...MONO,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: '#F4F7FB',
-                      background: '#0e1626',
-                      border: '1px solid #00D4AA',
-                      padding: '5px 10px',
-                      textDecoration: 'none',
-                      borderRadius: 2,
-                    }}
-                  >
+                  <a href="/dashboard/account-intel" style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#F4F7FB', background: '#0e1626', border: '1px solid #00D4AA', padding: '5px 10px', textDecoration: 'none', borderRadius: 2 }}>
                     ANALYZE {activeInvestigation.accounts_detected.length} ACCOUNTS →
                   </a>
                 )}
-                <button
-                  onClick={handleReset}
-                  style={{
-                    ...MONO,
-                    fontSize: 10,
-                    color: '#EF4444',
-                    background: 'transparent',
-                    border: '1px solid #EF4444',
-                    padding: '4px 10px',
-                    cursor: 'pointer',
-                    borderRadius: 2,
-                  }}
-                >
+                <button onClick={handleReset} style={{ ...MONO, fontSize: 10, color: '#EF4444', background: 'transparent', border: '1px solid #EF4444', padding: '4px 10px', cursor: 'pointer', borderRadius: 2 }}>
                   RESET INVESTIGATION
                 </button>
               </div>
             </div>
 
-            {/* Stage Progress Bar */}
             <InvestigationWorkflow stages={activeInvestigation.stages} />
 
             {/* Investigation Dossier Summary */}
-            <div style={{ padding: 22, background: '#07090e', borderBottom: BORDER }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24, alignItems: 'start' }}>
-                {/* Threat Score Card */}
-                <div style={{ background: '#04060a', border: BORDER, padding: 18, borderRadius: 2 }}>
+            <div style={{ padding: 22, background: '#07090e', borderBottom: BORDER, minWidth: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18, alignItems: 'start' }}>
+                <div style={{ minWidth: 0, background: '#04060a', border: BORDER, padding: 18, borderRadius: 2 }}>
                   <div style={{ ...MONO, fontSize: 10, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 8 }}>
                     THREAT RISK SCORE
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span
-                      style={{
-                        ...MONO,
-                        fontSize: 38,
-                        fontWeight: 800,
-                        color: activeInvestigation.threat_score >= 70 ? '#EF4444' : activeInvestigation.threat_score >= 40 ? '#F59E0B' : '#34D399',
-                      }}
-                    >
+                    <span style={{ ...MONO, fontSize: 38, fontWeight: 800, color: activeInvestigation.threat_score >= 70 ? '#EF4444' : activeInvestigation.threat_score >= 40 ? '#F59E0B' : '#34D399' }}>
                       {activeInvestigation.threat_score}
                     </span>
                     <span style={{ ...MONO, fontSize: 12, color: '#64748B' }}>/ 100</span>
                   </div>
-
                   <div style={{ ...MONO, marginTop: 10, fontSize: 11, fontWeight: 700, color: activeInvestigation.risk_level === 'HIGH' ? '#EF4444' : '#F59E0B' }}>
                     SEVERITY: {activeInvestigation.risk_level}
                   </div>
-                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, overflowWrap: 'anywhere' }}>
                     Category: {activeInvestigation.narrative_category}
                   </div>
                 </div>
 
-                {/* Synthesis Dossier Text */}
-                <div style={{ background: '#04060a', border: BORDER, borderLeft: '4px solid #00D4AA', padding: 18 }}>
+                <div style={{ minWidth: 0, background: '#04060a', border: BORDER, borderLeft: '4px solid #00D4AA', padding: 18 }}>
                   <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#00D4AA', letterSpacing: '0.12em', marginBottom: 8 }}>
                     EVIDENCE-BACKED DOSSIER SYNTHESIS
                   </div>
-                  <pre
-                    style={{
-                      fontFamily: 'inherit',
-                      margin: 0,
-                      whiteSpace: 'pre-wrap',
-                      fontSize: 13,
-                      lineHeight: 1.65,
-                      color: '#F4F7FB',
-                    }}
-                  >
+                  <pre style={{ fontFamily: 'inherit', margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13, lineHeight: 1.65, color: '#F4F7FB' }}>
                     {activeInvestigation.synthesis_dossier}
                   </pre>
                 </div>
               </div>
 
-              {/* Key Findings List */}
               {activeInvestigation.key_findings && activeInvestigation.key_findings.length > 0 && (
-                <div style={{ marginTop: 18 }}>
+                <div style={{ marginTop: 18, minWidth: 0 }}>
                   <div style={{ ...MONO, fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 10 }}>
                     KEY INVESTIGATION FINDINGS
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat( auto-fit, minmax(280px, 1fr) )', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
                     {activeInvestigation.key_findings.map((f, i) => (
-                      <div key={i} style={{ background: '#04060a', border: BORDER, padding: 14 }}>
-                        <div style={{ fontSize: 13, fontWeight: 650, color: '#F4F7FB', marginBottom: 4 }}>
+                      <div key={i} style={{ minWidth: 0, background: '#04060a', border: BORDER, padding: 14 }}>
+                        <div style={{ fontSize: 13, fontWeight: 650, color: '#F4F7FB', marginBottom: 4, overflowWrap: 'anywhere' }}>
                           {f.title}
                         </div>
-                        <div style={{ fontSize: 12, lineHeight: 1.5, color: '#CBD5E1', marginBottom: 8 }}>
+                        <div style={{ fontSize: 12, lineHeight: 1.5, color: '#CBD5E1', marginBottom: 8, overflowWrap: 'anywhere' }}>
                           {f.explanation}
                         </div>
-                        <div style={{ ...MONO, fontSize: 10, color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Source: {f.source}</span>
-                          <span style={{ color: '#00D4AA' }}>{Math.round(f.confidence * 100)}% Conf</span>
+                        <div style={{ ...MONO, fontSize: 10, color: '#64748B', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ overflowWrap: 'anywhere' }}>Source: {f.source}</span>
+                          <span style={{ color: '#00D4AA', whiteSpace: 'nowrap' }}>{Math.round(f.confidence * 100)}% Conf</span>
                         </div>
                       </div>
                     ))}
@@ -287,17 +230,16 @@ export default function OverviewPage() {
               )}
             </div>
 
-            {/* Evidence & Provenance Panel */}
             <EvidencePanel evidence={activeInvestigation.evidence} sourceStatuses={activeInvestigation.source_statuses} />
           </div>
         )}
 
         {/* Network Graph & Alert Feed Section */}
-        <div id="st-graph-section" style={{ display: 'flex', minHeight: 480, borderBottom: BORDER }}>
-          <div style={{ flex: '0 0 65%', minWidth: 0, borderRight: BORDER, overflow: 'hidden' }}>
+        <div id="st-graph-section" style={{ display: 'flex', flexWrap: 'wrap', minHeight: 480, borderBottom: BORDER }}>
+          <div style={{ flex: '1 1 620px', minWidth: 0, borderRight: BORDER, overflow: 'hidden' }}>
             <NetworkGraphPanel activeInvestigation={activeInvestigation} />
           </div>
-          <div style={{ flex: '0 0 35%', minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ flex: '1 1 360px', minWidth: 0, overflow: 'hidden' }}>
             <AlertFeed />
           </div>
         </div>
