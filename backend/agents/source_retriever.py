@@ -131,7 +131,7 @@ class SourceRetriever:
 
         if mode == "handle":
             # Handle-specific search (Bluesky / Social graph)
-            handle = query_str.lstrip("@")
+            handle = query_str.split()[0].lstrip("@").rstrip(":,;")
             bs_evidence, bs_status = self._fetch_bluesky_handle_posts(handle, now_iso)
             evidence.extend(bs_evidence)
             statuses.append(bs_status)

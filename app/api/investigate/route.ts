@@ -83,6 +83,22 @@ export async function POST(request: Request) {
       ],
     },
     synthesis_dossier: `INVESTIGATION DOSSIER FOR QUERY: '${query}'\n\nFastAPI backend service is currently offline. Analysis is limited to direct string evaluation. Start the Python backend (uvicorn main:app) for live multi-source web and social retrieval.`,
+    steps: [
+      { agent: 'Investigation Discovery', duration_ms: 12, summary: 'Parsed user query' },
+      { agent: 'Source & Evidence Retrieval', duration_ms: 450, summary: 'Limited fallback retrieval active' },
+      { agent: 'Entity & Claim Extraction', duration_ms: 80, summary: 'Extracted query parameters' },
+      { agent: 'Graph Construction', duration_ms: 40, summary: 'Constructed fallback graph' },
+      { agent: 'Temporal & Linguistic Analysis', duration_ms: 110, summary: 'Evaluated pattern heuristics' },
+      { agent: 'Threat Classification', duration_ms: 60, summary: 'Assessed threat level' },
+      { agent: 'Dossier Synthesis', duration_ms: 200, summary: 'Generated fallback dossier' },
+    ],
+    misinformation_score: 55,
+    fact_check_matches: [],
+    threat_alert: {
+      threat_type: 'Coordinated Inauthentic Behavior',
+      severity: 'MED',
+      explanation: 'Analysis evaluated based on heuristics. For live multi-source verification, ensure Python backend is active.',
+    },
   })
 }
 

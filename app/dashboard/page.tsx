@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { InvestigationResult } from '@/types'
 import NetworkGraphPanel from './_components/NetworkGraphPanel'
 import AnalyzePanel from './_components/AnalyzePanel'
@@ -97,6 +97,27 @@ function ActivityTimeline() {
 export default function OverviewPage() {
   const [activeInvestigation, setActiveInvestigation] = useState<InvestigationResult | null>(null)
 
+  // Restore previous investigation state on mount across tab navigation
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('echosnare_active_investigation')
+      if (saved) {
+        const parsed = JSON.parse(saved) as InvestigationResult
+        if (parsed?.query) {
+          setActiveInvestigation(parsed)
+        }
+      }
+    } catch {}
+  }, [])
+
+  function handleReset() {
+    setActiveInvestigation(null)
+    try {
+      sessionStorage.removeItem('echosnare_active_investigation')
+      sessionStorage.removeItem('echosnare_active_query')
+    } catch {}
+  }
+
   return (
     <div style={{ background: '#000000', minHeight: '100vh', color: '#F4F7FB' }}>
       {/* Workstation Header */}
@@ -128,6 +149,65 @@ export default function OverviewPage() {
         {/* Dynamic Investigation Results (When Active) */}
         {activeInvestigation && (
           <div>
+            {/* Action Bar with Reset and Navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: '#05070c', borderBottom: BORDER, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ ...MONO, fontSize: 11, color: '#00D4AA', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 8px #00D4AA' }} />
+                <span>ACTIVE PROMPT INVESTIGATION: &quot;{activeInvestigation.query.length > 50 ? activeInvestigation.query.slice(0, 48) + '…' : activeInvestigation.query}&quot;</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <a
+                  href="#st-graph-section"
+                  style={{
+                    ...MONO,
+                    fontSize: 10,
+                    fontWeight: 750,
+                    color: '#000000',
+                    background: '#00D4AA',
+                    padding: '5px 12px',
+                    textDecoration: 'none',
+                    borderRadius: 2,
+                    boxShadow: '0 0 10px rgba(0,212,170,0.3)',
+                  }}
+                >
+                  VIEW LIVE GRAPH ↓
+                </a>
+                {activeInvestigation.accounts_detected && activeInvestigation.accounts_detected.length > 0 && (
+                  <a
+                    href="/dashboard/account-intel"
+                    style={{
+                      ...MONO,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#F4F7FB',
+                      background: '#0e1626',
+                      border: '1px solid #00D4AA',
+                      padding: '5px 10px',
+                      textDecoration: 'none',
+                      borderRadius: 2,
+                    }}
+                  >
+                    ANALYZE {activeInvestigation.accounts_detected.length} ACCOUNTS →
+                  </a>
+                )}
+                <button
+                  onClick={handleReset}
+                  style={{
+                    ...MONO,
+                    fontSize: 10,
+                    color: '#EF4444',
+                    background: 'transparent',
+                    border: '1px solid #EF4444',
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    borderRadius: 2,
+                  }}
+                >
+                  RESET INVESTIGATION
+                </button>
+              </div>
+            </div>
+
             {/* Stage Progress Bar */}
             <InvestigationWorkflow stages={activeInvestigation.stages} />
 
@@ -215,7 +295,7 @@ export default function OverviewPage() {
         {/* Network Graph & Alert Feed Section */}
         <div id="st-graph-section" style={{ display: 'flex', minHeight: 480, borderBottom: BORDER }}>
           <div style={{ flex: '0 0 65%', minWidth: 0, borderRight: BORDER, overflow: 'hidden' }}>
-            <NetworkGraphPanel />
+            <NetworkGraphPanel activeInvestigation={activeInvestigation} />
           </div>
           <div style={{ flex: '0 0 35%', minWidth: 0, overflow: 'hidden' }}>
             <AlertFeed />

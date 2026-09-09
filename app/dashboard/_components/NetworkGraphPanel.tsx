@@ -16,31 +16,101 @@ const THREAT_COLOR: Record<string, string> = {
   LOW:  '#3B82F6',
 }
 
-export default function NetworkGraphPanel() {
-  const [campaigns,   setCampaigns]   = useState<Campaign[]>(mockCampaigns)
-  const [selected,    setSelected]    = useState(0)     // which campaign button is active
-  const [visible,     setVisible]     = useState(0)     // which campaign data the graph shows
-  const [opacity,     setOpacity]     = useState(1)     // graph fade opacity
-  const [graphReady,  setGraphReady]  = useState(false) // skeleton until D3 entrance anim ends
-  const [showLive,    setShowLive]    = useState(false) // LIVE FEED tab replaces the graph
+interface Props {
+  activeInvestigation?: InvestigationResult | null
+}
+
+function buildPromptCampaign(inv: InvestigationResult): Campaign {
+  const shortQ = inv.query.length > 20 ? inv.query.slice(0, 18) + '…' : inv.query
+  return {
+    id: 'active-prompt-graph',
+    name: `● LIVE: ${shortQ}`,
+    threat_level: inv.risk_level || 'HIGH',
+    account_count: inv.graph?.nodes?.length || 0,
+    start_time: inv.timestamp || new Date().toISOString(),
+    narrative: inv.narrative_category || inv.query,
+    confidence: inv.confidence || 0.85,
+    nodes: inv.graph?.nodes || [],
+    edges: inv.graph?.edges || [],
+  }
+}
+
+export default function NetworkGraphPanel({ activeInvestigation: propInvestigation }: Props = {}) {
+  const [baseCampaigns, setBaseCampaigns] = useState<Campaign[]>(mockCampaigns)
+  const [activeInv, setActiveInv] = useState<InvestigationResult | null>(propInvestigation ?? null)
+  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns)
+  const [selected, setSelected] = useState(0) // which campaign button is active
+  const [visible, setVisible] = useState(0) // which campaign data the graph shows
+  const [opacity, setOpacity] = useState(1) // graph fade opacity
+  const [graphReady, setGraphReady] = useState(false) // skeleton until D3 entrance anim ends
+  const [showLive, setShowLive] = useState(false) // LIVE FEED tab replaces the graph
 
   // Clear any in-flight timeouts on rapid switching
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   // Keep a ref so event handlers always see the latest campaigns array
   const campaignsRef = useRef<Campaign[]>(mockCampaigns)
 
+  // Sync prop changes
+  useEffect(() => {
+    if (propInvestigation) {
+      setActiveInv(propInvestigation)
+    }
+  }, [propInvestigation])
+
+  // On mount: check sessionStorage for active investigation
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('echosnare_active_investigation')
+      if (saved) {
+        const parsed = JSON.parse(saved) as InvestigationResult
+        if (parsed?.graph?.nodes?.length) {
+          setActiveInv(parsed)
+        }
+      }
+    } catch {}
+  }, [])
+
+  // Listen for investigation completion events
+  useEffect(() => {
+    function onInvComplete(e: Event) {
+      const data = (e as CustomEvent<InvestigationResult>).detail
+      if (data?.graph?.nodes?.length) {
+        setActiveInv(data)
+        // Automatically switch to the new live prompt graph
+        setSelected(0)
+        setVisible(0)
+      }
+    }
+    window.addEventListener('echosnare:investigation-complete', onInvComplete)
+    return () => window.removeEventListener('echosnare:investigation-complete', onInvComplete)
+  }, [])
+
   // Fetch real campaign data from backend (via /api/campaigns Next.js proxy)
   useEffect(() => {
     fetch('/api/campaigns')
-      .then(r => r.ok ? r.json() : null)
+      .then(r => (r.ok ? r.json() : null))
       .then((data: Campaign[] | null) => {
         if (Array.isArray(data) && data.length > 0) {
-          setCampaigns(data)
-          campaignsRef.current = data
+          setBaseCampaigns(data)
         }
       })
-      .catch(() => { /* silent — keeps mockCampaigns */ })
+      .catch(() => {
+        /* silent — keeps mockCampaigns */
+      })
   }, [])
+
+  // Recompute campaigns whenever baseCampaigns or activeInv changes
+  useEffect(() => {
+    if (activeInv && activeInv.graph?.nodes?.length) {
+      const promptCamp = buildPromptCampaign(activeInv)
+      const combined = [promptCamp, ...baseCampaigns]
+      setCampaigns(combined)
+      campaignsRef.current = combined
+    } else {
+      setCampaigns(baseCampaigns)
+      campaignsRef.current = baseCampaigns
+    }
+  }, [baseCampaigns, activeInv])
 
   // On mount: check if a campaign was pre-selected via sessionStorage (e.g. from Reports page)
   useEffect(() => {
@@ -65,7 +135,7 @@ export default function NetworkGraphPanel() {
       setSelected(idx)
       setOpacity(0)
       const t1 = setTimeout(() => setVisible(idx), 300)
-      const t2 = setTimeout(() => setOpacity(1),   400)
+      const t2 = setTimeout(() => setOpacity(1), 400)
       timers.current = [t1, t2]
     }
     window.addEventListener('echosnare:campaign-select', onSelect)
@@ -82,16 +152,16 @@ export default function NetworkGraphPanel() {
     if (idx === selected) return
     timers.current.forEach(clearTimeout)
 
-    setSelected(idx)         // button highlights immediately
-    setOpacity(0)            // graph fades out
-    setGraphReady(false)     // re-show skeleton during campaign switch
+    setSelected(idx) // button highlights immediately
+    setOpacity(0) // graph fades out
+    setGraphReady(false) // re-show skeleton during campaign switch
 
-    const t1 = setTimeout(() => setVisible(idx),  300)   // swap data mid-fade
-    const t2 = setTimeout(() => setOpacity(1),    400)   // fade back in
+    const t1 = setTimeout(() => setVisible(idx), 300) // swap data mid-fade
+    const t2 = setTimeout(() => setOpacity(1), 400) // fade back in
     timers.current = [t1, t2]
   }
 
-  const campaign = campaigns[visible]
+  const campaign = campaigns[visible] || campaigns[0]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -114,25 +184,29 @@ export default function NetworkGraphPanel() {
           CAMPAIGN
         </span>
 
-        {campaigns.map((c, i) => (
-          <button
-            key={c.id}
-            onClick={() => switchTo(i)}
-            style={{
-              ...FONT,
-              fontSize:        '11px',
-              padding:         '3px 12px',
-              border:          selected === i ? '1px solid #00D4AA' : '1px solid #162032',
-              cursor:          'pointer',
-              backgroundColor: selected === i ? '#00D4AA' : '#04060a',
-              color:           selected === i ? '#000000' : '#94A3B8',
-              fontWeight:      selected === i ? 700 : 400,
-              letterSpacing:   '0.04em',
-            }}
-          >
-            {c.name}
-          </button>
-        ))}
+        {campaigns.map((c, i) => {
+          const isLivePrompt = c.id === 'active-prompt-graph'
+          const isActive = selected === i
+          return (
+            <button
+              key={c.id}
+              onClick={() => switchTo(i)}
+              style={{
+                ...FONT,
+                fontSize: '11px',
+                padding: '3px 12px',
+                border: isActive ? '1px solid #00D4AA' : isLivePrompt ? '1px solid #00D4AA' : '1px solid #162032',
+                cursor: 'pointer',
+                backgroundColor: isActive ? '#00D4AA' : isLivePrompt ? '#04221d' : '#04060a',
+                color: isActive ? '#000000' : isLivePrompt ? '#00D4AA' : '#94A3B8',
+                fontWeight: isActive || isLivePrompt ? 700 : 400,
+                letterSpacing: '0.04em',
+              }}
+            >
+              {c.name}
+            </button>
+          )
+        })}
 
         {/* LIVE FEED tab — green pulsing dot, green left border */}
         <button
