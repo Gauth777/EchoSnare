@@ -39,11 +39,23 @@ def fetch_bluesky_posts(handle: str) -> list[dict]:
     actor = _normalize_handle(handle)
     if not actor:
         return []
-    response = requests.get(
-        BLUESKY_FEED_URL,
-        params={"actor": actor, "limit": 50, "filter": "posts_no_replies"},
-        timeout=REQUEST_TIMEOUT,
-    )
+
+    try:
+        response = requests.get(
+            BLUESKY_FEED_URL,
+            params={"actor": actor, "limit": 50, "filter": "posts_no_replies"},
+            headers={"User-Agent": "EchoSnare/1.0"},
+            timeout=REQUEST_TIMEOUT,
+        )
+    except requests.RequestException:
+        raise
+
+    # A missing/invalid actor is a valid "no data" outcome, not a backend error.
+    # The caller will surface this as LIMITED DATA rather than FAILED / ERROR.
+    if response.status_code in (400, 404):
+        logger.info("Bluesky account not found or invalid: %s", actor)
+        return []
+
     response.raise_for_status()
     feed = response.json().get("feed", [])
 
