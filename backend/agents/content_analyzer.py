@@ -62,38 +62,39 @@ class ContentAnalyzer:
         """LLM misinformation score 0-100 via Gemini or Groq; lexical fallback on any error."""
         gemini_key = os.getenv("GEMINI_API_KEY")
         if gemini_key:
-            try:
-                import urllib.request
-                g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
-                g_body = {
-                    "contents": [{"parts": [{"text": (
-                        "You are a misinformation detection engine for Indian social media "
-                        "(English, Hindi, and Hinglish). Judge how likely a piece of text is "
-                        "coordinated misinformation, a manipulative viral forward, or a "
-                        "fabricated claim. Reply ONLY with strict JSON: "
-                        '{"misinformation_score": <integer 0-100>, "reason": "<short phrase>"}. '
-                        "0 = clearly benign/factual, 100 = almost certainly misinformation.\n\n"
-                        f"TEXT TO EVALUATE:\n{text[:2000]}"
-                    )}]}],
-                    "generationConfig": {
-                        "responseMimeType": "application/json",
-                        "temperature": 0.1,
-                    },
-                }
-                g_req = urllib.request.Request(
-                    g_url,
-                    data=json.dumps(g_body).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                )
-                with urllib.request.urlopen(g_req, timeout=10) as g_res:
-                    g_data = json.loads(g_res.read().decode("utf-8"))
-                    raw_t = g_data["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(raw_t)
-                    score = float(parsed.get("misinformation_score", -1))
-                    if 0 <= score <= 100:
-                        return score
-            except Exception:
-                pass
+            for m in ("gemini-flash-lite-latest", "gemini-3.5-flash-lite"):
+                try:
+                    import urllib.request
+                    g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
+                    g_body = {
+                        "contents": [{"parts": [{"text": (
+                            "You are a misinformation detection engine for Indian social media "
+                            "(English, Hindi, and Hinglish). Judge how likely a piece of text is "
+                            "coordinated misinformation, a manipulative viral forward, or a "
+                            "fabricated claim. Reply ONLY with strict JSON: "
+                            '{"misinformation_score": <integer 0-100>, "reason": "<short phrase>"}. '
+                            "0 = clearly benign/factual, 100 = almost certainly misinformation.\n\n"
+                            f"TEXT TO EVALUATE:\n{text[:2000]}"
+                        )}]}],
+                        "generationConfig": {
+                            "responseMimeType": "application/json",
+                            "temperature": 0.1,
+                        },
+                    }
+                    g_req = urllib.request.Request(
+                        g_url,
+                        data=json.dumps(g_body).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(g_req, timeout=6) as g_res:
+                        g_data = json.loads(g_res.read().decode("utf-8"))
+                        raw_t = g_data["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(raw_t)
+                        score = float(parsed.get("misinformation_score", -1))
+                        if 0 <= score <= 100:
+                            return score
+                except Exception:
+                    continue
 
         if self._client is None:
             return self._lexical_score(text)

@@ -105,7 +105,7 @@ def assess_claim(query: str, evidence: Iterable[Any]) -> ClaimAssessment:
         confidence = min(0.97, 0.78 + 0.06 * min(len(fact_checks), 3))
         return ClaimAssessment(
             status="CONTRADICTED",
-            label="NOT SUPPORTED",
+            label="DEBUNKED / REFUTED BY FACTS",
             explanation=f"Retrieved fact-check evidence directly contradicts or debunks the investigated statement ({len(fact_checks)} matching fact-check source{'s' if len(fact_checks) != 1 else ''}).",
             confidence=round(confidence, 2),
             corroborating_sources=0,

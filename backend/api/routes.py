@@ -240,16 +240,18 @@ async def analyze_whatsapp_forward(request: dict) -> dict[str, Any]:
     except Exception:
         content_score = wa_result.misinformation_score
 
-    # Blend scores — WhatsApp patterns + content analysis. The content signal
-    # is a Groq Llama 3.3 70B judgment, so it carries the most weight when
-    # forward markers exist; patterns lead on casual conversational text.
+    # Blend scores — WhatsApp patterns + content analysis.
     if wa_result.forward_signals or wa_result.is_forward:
-        final_score = int(wa_result.misinformation_score * 0.35 + content_score * 0.65)
-        # A confident LLM flag on forwarded content is a high-risk combination
-        if content_score >= 80:
-            final_score = max(final_score, 75)
+        final_score = int(wa_result.misinformation_score * 0.4 + content_score * 0.6)
+        if content_score >= 75 or wa_result.misinformation_score >= 75:
+            final_score = max(final_score, int(max(wa_result.misinformation_score, content_score) * 0.85))
     else:
-        final_score = int(wa_result.misinformation_score * 0.6 + content_score * 0.4)
+        if wa_result.misinformation_score <= 15 and content_score <= 15:
+            final_score = max(wa_result.misinformation_score, content_score)
+        else:
+            final_score = int(wa_result.misinformation_score * 0.5 + content_score * 0.5)
+            if content_score >= 75 or wa_result.misinformation_score >= 75:
+                final_score = max(final_score, int(max(wa_result.misinformation_score, content_score) * 0.85))
     final_score = min(final_score, 97)
     risk_level = "HIGH" if final_score > 70 else "MED" if final_score > 40 else "LOW"
 

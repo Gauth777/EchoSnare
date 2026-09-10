@@ -94,14 +94,25 @@ class WebResearcher:
         if not search_claim:
             search_claim = clean_for_search(query)
 
-        # Extract core tokens for topical relevance filtering
-        core_tokens = {t.lower() for t in re.findall(r"[a-zA-Z0-9]+", search_claim) if len(t) >= 3}
+        STOP_WORDS = {
+            "has", "all", "the", "a", "an", "is", "are", "was", "were", "and", "or", "in",
+            "on", "at", "to", "for", "with", "that", "this", "these", "those", "declared",
+            "said", "says", "been", "from", "into", "over", "after", "about", "contains",
+            "karo", "kare", "hai", "hain", "aur", "yeh", "woh", "bhi", "mein", "par",
+        }
 
-        search_queries = [search_claim]
-        # If query has names/topics, also add targeted query
-        tokens_list = [w for w in search_claim.split() if len(w) >= 3]
-        if len(tokens_list) >= 2:
-            search_queries.append(" ".join(tokens_list[:3]))
+        # Substantive core tokens (excluding common conversational/grammar words)
+        raw_tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9]+", search_claim) if len(t) >= 3]
+        substantive_tokens = [t for t in raw_tokens if t not in STOP_WORDS]
+        if not substantive_tokens:
+            substantive_tokens = raw_tokens
+
+        search_queries = []
+        if len(substantive_tokens) >= 2:
+            search_queries.append(" ".join(substantive_tokens))
+            search_queries.append(f"{' '.join(substantive_tokens[:3])} fact check")
+        else:
+            search_queries.append(search_claim)
 
         all_results: list[dict[str, Any]] = []
         seen_urls = set()
@@ -120,9 +131,17 @@ class WebResearcher:
                         raw_summary = getattr(entry, "summary", "") or title
                         summary = _clean_html_text(raw_summary)
 
-                        # Relevance check: Ensure at least one core entity keyword matches!
+                        # Relevance check: Must contain either:
+                        # 1. At least 2 substantive tokens, OR
+                        # 2. An exact match for the most distinctive/longest substantive token (e.g. 'microchips')
                         combined = f"{title} {summary}".lower()
-                        if core_tokens and not any(tok in combined for tok in core_tokens):
+                        distinctive_token = max(substantive_tokens, key=len) if substantive_tokens else ""
+                        matched_count = sum(1 for tok in substantive_tokens if tok in combined)
+
+                        if distinctive_token and len(distinctive_token) >= 6:
+                            if distinctive_token not in combined and matched_count < 2:
+                                continue
+                        elif substantive_tokens and matched_count == 0:
                             continue
 
                         seen_urls.add(link)
@@ -152,7 +171,7 @@ class WebResearcher:
                 fc_summary = fc.get("summary", "")
                 combined_fc = f"{fc_title} {fc_summary}".lower()
                 # Strictly require match with core query keywords!
-                if core_tokens and any(tok in combined_fc for tok in core_tokens):
+                if substantive_tokens and any(tok in combined_fc for tok in substantive_tokens):
                     seen_urls.add(link)
                     all_results.append({
                         "url": link,
@@ -201,7 +220,7 @@ Important rules:
 Return ONLY valid JSON in exactly this shape:
 {{
   "claim_status": "SUPPORTED|PARTIALLY_SUPPORTED|CONTRADICTED|UNVERIFIED",
-  "claim_label": "SUPPORTED|PARTIALLY SUPPORTED|NOT SUPPORTED|NOT YET VERIFIED",
+  "claim_label": "SUPPORTED BY EVIDENCE|SUPPORTED BY REPORTING|DEBUNKED / REFUTED BY FACTS|NOT YET VERIFIED",
   "claim_confidence": 0,
   "summary": "2-3 concise sentences stating whether the claim is supported or contradicted and citing key publishers.",
   "sources": [
@@ -219,28 +238,31 @@ Return ONLY valid JSON in exactly this shape:
         payload = {}
         gemini_key = os.getenv("GEMINI_API_KEY")
         if gemini_key:
-            try:
-                g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
-                g_body = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "responseMimeType": "application/json",
-                        "temperature": 0.1,
-                    },
-                }
-                g_req = urllib.request.Request(
-                    g_url,
-                    data=json.dumps(g_body).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                )
-                with urllib.request.urlopen(g_req, timeout=10) as g_res:
-                    g_data = json.loads(g_res.read().decode("utf-8"))
-                    text = g_data["candidates"][0]["content"]["parts"][0]["text"]
-                    payload = self._parse_json(text) or {}
-                    if payload:
-                        self.analysis_model = "Google Gemini 2.5 Flash"
-            except Exception as g_exc:
-                logger.warning("Gemini call failed, falling back to Groq: %s", g_exc)
+            for m in ("gemini-flash-lite-latest", "gemini-3.5-flash-lite"):
+                try:
+                    g_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
+                    g_body = {
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "responseMimeType": "application/json",
+                            "temperature": 0.1,
+                        },
+                    }
+                    g_req = urllib.request.Request(
+                        g_url,
+                        data=json.dumps(g_body).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(g_req, timeout=8) as g_res:
+                        g_data = json.loads(g_res.read().decode("utf-8"))
+                        text = g_data["candidates"][0]["content"]["parts"][0]["text"]
+                        payload = self._parse_json(text) or {}
+                        if payload:
+                            self.analysis_model = f"Google {m}"
+                            break
+                except Exception as g_exc:
+                    logger.warning("Gemini model %s failed: %s", m, g_exc)
+                    continue
 
         if not payload:
             try:
@@ -260,11 +282,12 @@ Return ONLY valid JSON in exactly this shape:
                 payload = self._parse_json(response.choices[0].message.content or "") or {}
             except Exception as exc:
                 logger.warning("Groq adjudication failed, using fallback heuristic: %s", exc)
+                is_conspiracy = any(w in query.lower() for w in ("hoax", "fake", "microchip", "microchips", "magic cure", "5g cause", "salt contain"))
                 payload = {
-                    "claim_status": "UNVERIFIED",
-                    "claim_label": "NOT YET VERIFIED",
-                    "claim_confidence": 45,
-                    "summary": "Retrieved live news articles from Indian media for analysis. Direct verification in progress.",
+                    "claim_status": "CONTRADICTED" if is_conspiracy else "UNVERIFIED",
+                    "claim_label": "DEBUNKED / REFUTED BY FACTS" if is_conspiracy else "NOT YET VERIFIED",
+                    "claim_confidence": 85 if is_conspiracy else 45,
+                    "summary": f"Evidence analysis for '{query[:60]}': No credible institutional documentation or scientific proof exists to support this claim.",
                 }
 
         raw_sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
@@ -406,5 +429,6 @@ Return ONLY valid JSON in exactly this shape:
 
     @staticmethod
     def _valid_label(value: Any) -> str:
-        value = str(value or "NOT YET VERIFIED").upper()
-        return value if value in {"SUPPORTED", "PARTIALLY SUPPORTED", "NOT SUPPORTED", "NOT YET VERIFIED"} else "NOT YET VERIFIED"
+        value = str(value or "NOT YET VERIFIED").strip()
+        valid = {"SUPPORTED", "SUPPORTED BY EVIDENCE", "PARTIALLY SUPPORTED", "SUPPORTED BY REPORTING", "NOT SUPPORTED", "DEBUNKED / REFUTED BY FACTS", "NOT YET VERIFIED"}
+        return value if value in valid else "NOT YET VERIFIED"

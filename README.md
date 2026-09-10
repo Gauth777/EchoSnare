@@ -85,6 +85,3 @@ backend/      FastAPI routes, multi-source retrieval engine, agents, and graph l
 docs/         ECHOSNARE_CAPABILITY_AUDIT.md, Architecture diagrams, and technical docs
 types/        TypeScript interface definitions
 ```
-
----
-
