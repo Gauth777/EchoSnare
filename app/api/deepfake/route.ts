@@ -11,6 +11,16 @@ export type DeepfakeVerdict =
   | 'LIKELY_AUTHENTIC'
   | 'ANALYSIS_FAILED'
 
+export interface GeminiForensics {
+  is_ai_generated?: boolean
+  manipulation_score?: number
+  category?: 'AI_GENERATED' | 'DEEPFAKE_FACE_SWAP' | 'DIGITALLY_MANIPULATED' | 'AUTHENTIC_PHOTO'
+  confidence?: number
+  detected_artifacts?: string[]
+  forensic_summary?: string
+  model_used?: string
+}
+
 export interface DeepfakeResult {
   status:             'complete' | 'failed'
   source:             'backend' | 'mock'
@@ -22,6 +32,7 @@ export interface DeepfakeResult {
   metadata_flags:     string[]
   analysis_summary:   string
   metadata_summary:   Record<string, unknown>
+  gemini_forensics?:  GeminiForensics | null
 }
 
 // Backend response shape (backend/agents/deepfake_detector.py)
@@ -31,6 +42,7 @@ interface BackendResponse {
   metadata_summary:         Record<string, unknown>
   ai_generated_probability?: number | null
   ai_model_used?:            string | null
+  gemini_forensics?:         GeminiForensics | null
 }
 
 const EDITING_TOOLS = [
@@ -67,6 +79,18 @@ function deriveSignals(backend: BackendResponse, score: number): { signals: stri
     signals.unshift('Moderate ELA response — possible localized editing')
   }
 
+  if (backend.gemini_forensics) {
+    const gf = backend.gemini_forensics
+    if (gf.category) {
+      signals.unshift(`Gemini Vision: ${gf.category.replace(/_/g, ' ')} (${Math.round((gf.confidence ?? 0.85) * 100)}% Conf)`)
+    }
+    if (Array.isArray(gf.detected_artifacts)) {
+      for (const artifact of gf.detected_artifacts) {
+        signals.push(`Gemini Artifact: ${artifact}`)
+      }
+    }
+  }
+
   if (typeof backend.ai_generated_probability === 'number' && backend.ai_model_used) {
     const pct = Math.round(backend.ai_generated_probability * 100)
     signals.unshift(
@@ -100,16 +124,17 @@ export async function POST(request: Request) {
   const body = await request.json()
   const image_url = (body as { image_url?: string; url?: string }).image_url
     ?? (body as { url?: string }).url
+  const image_base64 = (body as { image_base64?: string }).image_base64
 
-  if (typeof image_url !== 'string' || !image_url.trim()) {
-    return Response.json({ error: 'image_url is required' }, { status: 400 })
+  if ((!image_url || !image_url.trim()) && (!image_base64 || !image_base64.trim())) {
+    return Response.json({ error: 'image_url or image_base64 is required' }, { status: 400 })
   }
 
   try {
     const response = await fetch(`${BACKEND}/deepfake/analyze`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ image_url }),
+      body:    JSON.stringify({ image_url, image_base64 }),
       signal:  AbortSignal.timeout(55000),
     })
     if (!response.ok) throw new Error('Backend unavailable')
@@ -127,6 +152,7 @@ export async function POST(request: Request) {
         metadata_flags:     [],
         analysis_summary:   String(backend.metadata_summary.error ?? 'Analysis failed'),
         metadata_summary:   backend.metadata_summary,
+        gemini_forensics:   null,
       }
       return NextResponse.json(result)
     }
@@ -134,6 +160,8 @@ export async function POST(request: Request) {
     const score = Math.round(backend.manipulation_probability * 100)
     const verdict = verdictFor(score)
     const { signals, flags } = deriveSignals(backend, score)
+    const summary = backend.gemini_forensics?.forensic_summary || summaryFor(verdict, signals.length)
+
     const result: DeepfakeResult = {
       status:             'complete',
       source:             'backend',
@@ -143,8 +171,9 @@ export async function POST(request: Request) {
       ela_image_base64:   backend.ela_image_base64,
       signals,
       metadata_flags:     flags,
-      analysis_summary:   summaryFor(verdict, signals.length),
+      analysis_summary:   summary,
       metadata_summary:   backend.metadata_summary,
+      gemini_forensics:   backend.gemini_forensics ?? null,
     }
     return NextResponse.json(result)
   } catch {

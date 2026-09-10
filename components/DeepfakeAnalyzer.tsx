@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { DeepfakeResult, DeepfakeVerdict } from '@/app/api/deepfake/route'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -89,24 +89,95 @@ function ScoreArc({ score }: { score: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function DeepfakeAnalyzer() {
-  const [url,       setUrl]       = useState('')
-  const [analyzing, setAnalyzing] = useState(false)
-  const [result,    setResult]    = useState<DeepfakeResult | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
+  const [inputMode,   setInputMode]   = useState<'upload' | 'url'>('upload')
+  const [url,         setUrl]         = useState('')
+  const [fileBase64,  setFileBase64]  = useState<string | null>(null)
+  const [fileMeta,    setFileMeta]    = useState<{ name: string; size: string } | null>(null)
+  const [analyzing,   setAnalyzing]   = useState(false)
+  const [result,      setResult]      = useState<DeepfakeResult | null>(null)
+  const [error,       setError]       = useState<string | null>(null)
+  const [dragOver,    setDragOver]    = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Global clipboard paste listener (press Ctrl+V anywhere with an image)
+  useEffect(() => {
+    function handlePaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            handleFileSelect(file)
+            setInputMode('upload')
+            break
+          }
+        }
+      }
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [])
+
+  function handleFileSelect(file: File) {
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file (JPG, PNG, WEBP).')
+      return
+    }
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = () => {
+      const b64 = reader.result as string
+      setFileBase64(b64)
+      const sizeKb = Math.round(file.size / 1024)
+      setFileMeta({
+        name: file.name,
+        size: sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const files = e.dataTransfer.files
+    if (files && files[0]) {
+      handleFileSelect(files[0])
+    }
+  }
+
+  function clearImage() {
+    setFileBase64(null)
+    setFileMeta(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   async function runAnalysis(targetUrl?: string) {
     const imageUrl = (targetUrl ?? url).trim()
-    if (!imageUrl || analyzing) return
+    const isUsingUpload = inputMode === 'upload' && fileBase64
+    const isUsingUrl = inputMode === 'url' && imageUrl
+
+    if ((!isUsingUpload && !isUsingUrl) || analyzing) return
     setAnalyzing(true)
     setError(null)
     setResult(null)
 
     try {
+      const payload: { image_url?: string; image_base64?: string } = {}
+      if (isUsingUpload && fileBase64) {
+        payload.image_base64 = fileBase64
+      } else {
+        payload.image_url = imageUrl
+      }
+
       const res = await fetch('/api/deepfake', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ image_url: imageUrl }),
+        body:    JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('request failed')
       const data = (await res.json()) as DeepfakeResult
@@ -115,7 +186,7 @@ export default function DeepfakeAnalyzer() {
         setError(data.analysis_summary || 'Analysis failed for this image.')
       }
     } catch {
-      setError('Analysis failed. Check API configuration.')
+      setError('Analysis failed. Check backend service and API configuration.')
     } finally {
       setAnalyzing(false)
     }
@@ -123,6 +194,8 @@ export default function DeepfakeAnalyzer() {
 
   const verdictMeta = result ? VERDICT_META[result.verdict] : null
   const showResults = result !== null && result.verdict !== 'ANALYSIS_FAILED'
+
+  const canAnalyze = inputMode === 'upload' ? !!fileBase64 : !!url.trim()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -152,58 +225,210 @@ export default function DeepfakeAnalyzer() {
             DEEPFAKE &amp; IMAGE MANIPULATION DETECTOR
           </span>
           <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8' }}>
-            Powered by Error Level Analysis
+            Multimodal Gemini Vision + ELA Forensics + EXIF
           </span>
         </div>
         <div style={{ ...FONT, fontSize: '11px', color: '#94A3B8', marginBottom: '16px' }}>
-          ELA forensics + EXIF metadata analysis on any public image URL
+          Upload your own image file or analyze any public image URL with Google Gemini Vision &amp; Error Level Analysis
         </div>
 
-        <input
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') runAnalysis() }}
-          placeholder="Paste image URL to analyze (jpg, png, webp)..."
-          style={{
-            ...FONT,
-            width:           '100%',
-            boxSizing:       'border-box',
-            fontSize:        '12px',
-            color:           '#E2E8F0',
-            backgroundColor: '#04060a',
-            border:          BORDER,
-            outline:         'none',
-            padding:         '10px 12px',
-            marginBottom:    '12px',
-          }}
-        />
+        {/* Mode Switcher Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button
+            onClick={() => setInputMode('upload')}
+            style={{
+              ...FONT,
+              fontSize:        '11px',
+              fontWeight:      700,
+              letterSpacing:   '0.08em',
+              padding:         '6px 14px',
+              backgroundColor: inputMode === 'upload' ? '#00D4AA' : '#04060a',
+              color:           inputMode === 'upload' ? '#000000' : '#94A3B8',
+              border:          inputMode === 'upload' ? '1px solid #00D4AA' : BORDER,
+              cursor:          'pointer',
+              display:         'flex',
+              alignItems:      'center',
+              gap:             '6px',
+            }}
+          >
+            <span>📁</span> UPLOAD LOCAL IMAGE
+          </button>
+          <button
+            onClick={() => setInputMode('url')}
+            style={{
+              ...FONT,
+              fontSize:        '11px',
+              fontWeight:      700,
+              letterSpacing:   '0.08em',
+              padding:         '6px 14px',
+              backgroundColor: inputMode === 'url' ? '#00D4AA' : '#04060a',
+              color:           inputMode === 'url' ? '#000000' : '#94A3B8',
+              border:          inputMode === 'url' ? '1px solid #00D4AA' : BORDER,
+              cursor:          'pointer',
+              display:         'flex',
+              alignItems:      'center',
+              gap:             '6px',
+            }}
+          >
+            <span>🔗</span> IMAGE URL / SAMPLES
+          </button>
+        </div>
 
-        {/* Quick-test buttons */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-          {QUICK_TESTS.map(test => (
-            <button
-              key={test.label}
-              onClick={() => { setUrl(test.url); runAnalysis(test.url) }}
-              disabled={analyzing}
+        {/* Mode 1: Local Upload / Drag & Drop */}
+        {inputMode === 'upload' ? (
+          <div style={{ marginBottom: '16px' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/jpg"
+              style={{ display: 'none' }}
+              onChange={e => {
+                if (e.target.files && e.target.files[0]) {
+                  handleFileSelect(e.target.files[0])
+                }
+              }}
+            />
+
+            {!fileBase64 ? (
+              <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  ...FONT,
+                  border:          dragOver ? '2px dashed #00D4AA' : '1px dashed #2A3B53',
+                  backgroundColor: dragOver ? 'rgba(0, 212, 170, 0.05)' : '#04060a',
+                  padding:         '36px 20px',
+                  textAlign:       'center',
+                  cursor:          'pointer',
+                  transition:      'all 0.2s ease',
+                  display:         'flex',
+                  flexDirection:   'column',
+                  alignItems:      'center',
+                  gap:             '8px',
+                }}
+              >
+                <div style={{ fontSize: '26px' }}>📤</div>
+                <div style={{ fontSize: '13px', fontWeight: 650, color: '#F4F7FB' }}>
+                  Click to select or drag &amp; drop your image here
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748B' }}>
+                  Supports PNG, JPG, JPEG, WEBP • Or press Ctrl+V to paste from clipboard
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display:         'flex',
+                  alignItems:      'center',
+                  justifyContent:  'space-between',
+                  padding:         '12px 16px',
+                  backgroundColor: '#04060a',
+                  border:          '1px solid rgba(0, 212, 170, 0.3)',
+                  gap:             '14px',
+                  flexWrap:        'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={fileBase64}
+                    alt="Preview"
+                    style={{ width: '48px', height: '48px', objectFit: 'cover', border: BORDER, borderRadius: '2px' }}
+                  />
+                  <div>
+                    <div style={{ ...FONT, fontSize: '12px', fontWeight: 700, color: '#E2E8F0' }}>
+                      {fileMeta?.name || 'Uploaded Image'}
+                    </div>
+                    <div style={{ ...FONT, fontSize: '10px', color: '#00D4AA', marginTop: '2px' }}>
+                      Ready for forensic analysis • {fileMeta?.size}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      ...FONT,
+                      fontSize:        '10px',
+                      color:           '#94A3B8',
+                      background:      '#0e1626',
+                      border:          BORDER,
+                      padding:         '6px 12px',
+                      cursor:          'pointer',
+                    }}
+                  >
+                    Change Image
+                  </button>
+                  <button
+                    onClick={clearImage}
+                    style={{
+                      ...FONT,
+                      fontSize:        '10px',
+                      color:           '#EF4444',
+                      background:      'transparent',
+                      border:          '1px solid #EF4444',
+                      padding:         '6px 12px',
+                      cursor:          'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Mode 2: URL Input + Quick Tests */
+          <>
+            <input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') runAnalysis() }}
+              placeholder="Paste image URL to analyze (jpg, png, webp)..."
               style={{
                 ...FONT,
-                fontSize:        '10px',
-                letterSpacing:   '0.06em',
-                color:           '#94A3B8',
+                width:           '100%',
+                boxSizing:       'border-box',
+                fontSize:        '12px',
+                color:           '#E2E8F0',
                 backgroundColor: '#04060a',
                 border:          BORDER,
-                padding:         '6px 12px',
-                cursor:          analyzing ? 'not-allowed' : 'pointer',
+                outline:         'none',
+                padding:         '10px 12px',
+                marginBottom:    '12px',
               }}
-            >
-              {test.label}
-            </button>
-          ))}
-        </div>
+            />
+
+            {/* Quick-test buttons */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              {QUICK_TESTS.map(test => (
+                <button
+                  key={test.label}
+                  onClick={() => { setUrl(test.url); runAnalysis(test.url) }}
+                  disabled={analyzing}
+                  style={{
+                    ...FONT,
+                    fontSize:        '10px',
+                    letterSpacing:   '0.06em',
+                    color:           '#94A3B8',
+                    backgroundColor: '#04060a',
+                    border:          BORDER,
+                    padding:         '6px 12px',
+                    cursor:          analyzing ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {test.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <button
           onClick={() => runAnalysis()}
-          disabled={!url.trim() || analyzing}
+          disabled={!canAnalyze || analyzing}
           style={{
             ...FONT,
             display:         'flex',
@@ -214,17 +439,17 @@ export default function DeepfakeAnalyzer() {
             fontSize:        '12px',
             fontWeight:      700,
             letterSpacing:   '0.12em',
-            color:           url.trim() && !analyzing ? '#000000' : '#64748B',
-            backgroundColor: url.trim() && !analyzing ? '#00D4AA' : '#121a28',
+            color:           canAnalyze && !analyzing ? '#000000' : '#64748B',
+            backgroundColor: canAnalyze && !analyzing ? '#00D4AA' : '#121a28',
             border:          'none',
             padding:         '12px',
-            cursor:          url.trim() && !analyzing ? 'pointer' : 'not-allowed',
-            boxShadow:       url.trim() && !analyzing ? '0 0 15px rgba(0, 212, 170, 0.3)' : 'none',
+            cursor:          canAnalyze && !analyzing ? 'pointer' : 'not-allowed',
+            boxShadow:       canAnalyze && !analyzing ? '0 0 15px rgba(0, 212, 170, 0.3)' : 'none',
           }}
         >
           {analyzing ? (
             <>
-              RUNNING ELA FORENSICS...
+              RUNNING GEMINI VISION &amp; ELA FORENSICS...
               <span
                 style={{
                   display:        'inline-block',
@@ -251,144 +476,240 @@ export default function DeepfakeAnalyzer() {
 
       {/* ── Results ─────────────────────────────────────────────────────────── */}
       {showResults && result && verdictMeta && (
-        <div className="df-results" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <style>{`
-            @media (max-width: 900px) {
-              .df-results { grid-template-columns: 1fr !important; }
-            }
-          `}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          {/* Left — ELA heatmap */}
-          <div style={{ border: BORDER, backgroundColor: '#07090e', padding: '20px' }}>
+          {/* Gemini Multimodal Vision Intelligence Dossier Card */}
+          {result.gemini_forensics && (
             <div
               style={{
-                ...FONT,
-                fontSize:      '11px',
-                letterSpacing: '0.18em',
-                color:         '#94A3B8',
-                marginBottom:  '12px',
+                border:          '1px solid #00D4AA',
+                backgroundColor: 'rgba(0, 212, 170, 0.04)',
+                padding:         '18px 20px',
+                borderRadius:    '2px',
+                boxShadow:       '0 0 20px rgba(0, 212, 170, 0.08)',
               }}
             >
-              ELA HEATMAP
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                <div style={{ ...FONT, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: '#00D4AA', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00D4AA', boxShadow: '0 0 8px #00D4AA' }} />
+                  GOOGLE GEMINI MULTIMODAL FORENSIC INTELLIGENCE
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      ...FONT,
+                      fontSize:        '10px',
+                      fontWeight:      700,
+                      padding:         '3px 8px',
+                      borderRadius:    '2px',
+                      backgroundColor: result.gemini_forensics.is_ai_generated ? '#EF4444' : '#22C55E',
+                      color:           '#000000',
+                      letterSpacing:   '0.08em',
+                    }}
+                  >
+                    {result.gemini_forensics.category?.replace(/_/g, ' ') || (result.gemini_forensics.is_ai_generated ? 'AI GENERATED' : 'AUTHENTIC PHOTO')}
+                  </span>
+                  <span style={{ ...FONT, fontSize: '10px', color: '#94A3B8' }}>
+                    {result.gemini_forensics.model_used || 'Google Gemini Vision'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Detected Artifacts Tags */}
+              {result.gemini_forensics.detected_artifacts && result.gemini_forensics.detected_artifacts.length > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', letterSpacing: '0.1em', marginBottom: '6px' }}>
+                    VISUAL ANOMALIES &amp; ARTIFACTS IDENTIFIED:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {result.gemini_forensics.detected_artifacts.map((artifact, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          ...FONT,
+                          fontSize:        '10px',
+                          color:           '#F4F7FB',
+                          backgroundColor: '#07090e',
+                          border:          '1px solid #1e293b',
+                          padding:         '4px 8px',
+                          borderRadius:    '2px',
+                        }}
+                      >
+                        ⚠️ {artifact}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Forensic Summary */}
+              <div style={{ ...FONT, fontSize: '12px', color: '#E2E8F0', lineHeight: 1.65 }}>
+                {result.gemini_forensics.forensic_summary || result.analysis_summary}
+              </div>
             </div>
-            {result.ela_image_base64 ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`data:image/png;base64,${result.ela_image_base64}`}
-                alt="Error Level Analysis heatmap"
-                style={{ width: '100%', border: BORDER, display: 'block' }}
-              />
-            ) : (
+          )}
+
+          {/* Grid with Visual Inspection + Signals */}
+          <div className="df-results" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <style>{`
+              @media (max-width: 900px) {
+                .df-results { grid-template-columns: 1fr !important; }
+              }
+            `}</style>
+
+            {/* Left — Visual Comparison (Source Image & ELA Heatmap) */}
+            <div style={{ border: BORDER, backgroundColor: '#07090e', padding: '20px' }}>
               <div
                 style={{
                   ...FONT,
-                  display:         'flex',
-                  alignItems:      'center',
-                  justifyContent:  'center',
-                  height:          '240px',
-                  border:          BORDER,
-                  backgroundColor: '#04060a',
-                  fontSize:        '11px',
-                  color:           '#94A3B8',
+                  fontSize:      '11px',
+                  letterSpacing: '0.18em',
+                  color:         '#94A3B8',
+                  marginBottom:  '12px',
                 }}
               >
-                ELA visualization unavailable
+                IMAGE &amp; ELA COMPARISON
               </div>
-            )}
-            <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '12px', lineHeight: 1.6 }}>
-              Bright areas indicate potential editing. Uniform compression = authentic.
-              High variance = manipulated.
-            </div>
-          </div>
 
-          {/* Right — score, verdict, signals */}
-          <div style={{ border: BORDER, backgroundColor: '#07090e', padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <ScoreArc score={result.manipulation_score} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span
-                  style={{
-                    ...FONT,
-                    fontSize:        '11px',
-                    fontWeight:      700,
-                    letterSpacing:   '0.12em',
-                    color:           '#000000',
-                    backgroundColor: verdictMeta.color,
-                    padding:         '4px 10px',
-                    alignSelf:       'flex-start',
-                  }}
-                >
-                  {verdictMeta.label}
-                </span>
-                <span style={{ ...FONT, fontSize: '11px', color: '#CBD5E1' }}>
-                  CONFIDENCE: {Math.round(result.confidence * 100)}%
-                </span>
-                {result.source === 'mock' && (
-                  <span style={{ ...FONT, fontSize: '9px', color: '#F59E0B' }}>
-                    MOCK DATA — BACKEND UNREACHABLE
-                  </span>
+              <div style={{ display: 'grid', gridTemplateColumns: (fileBase64 || url) ? '1fr 1fr' : '1fr', gap: '12px', marginBottom: '12px' }}>
+                {(fileBase64 || url) && (
+                  <div>
+                    <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#64748B', marginBottom: '6px' }}>
+                      SOURCE INPUT
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={fileBase64 || url}
+                      alt="Source input"
+                      style={{ width: '100%', height: '220px', objectFit: 'contain', border: BORDER, backgroundColor: '#04060a' }}
+                    />
+                  </div>
                 )}
-              </div>
-            </div>
-
-            {result.signals.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    ...FONT,
-                    fontSize:      '11px',
-                    letterSpacing: '0.18em',
-                    color:         '#94A3B8',
-                    marginBottom:  '8px',
-                  }}
-                >
-                  FORENSIC SIGNALS
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {result.signals.map(signal => (
+                <div>
+                  <div style={{ ...FONT, fontSize: '10px', letterSpacing: '0.1em', color: '#64748B', marginBottom: '6px' }}>
+                    ELA HEATMAP
+                  </div>
+                  {result.ela_image_base64 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`data:image/png;base64,${result.ela_image_base64}`}
+                      alt="Error Level Analysis heatmap"
+                      style={{ width: '100%', height: '220px', objectFit: 'contain', border: BORDER, backgroundColor: '#04060a' }}
+                    />
+                  ) : (
                     <div
-                      key={signal}
                       style={{
                         ...FONT,
-                        fontSize:        '11px',
-                        color:           '#E2E8F0',
-                        backgroundColor: '#04060a',
+                        display:         'flex',
+                        alignItems:      'center',
+                        justifyContent:  'center',
+                        height:          '220px',
                         border:          BORDER,
-                        borderLeft:      `2px solid ${signalSeverityColor(signal)}`,
-                        padding:         '8px 10px',
-                        lineHeight:      1.5,
+                        backgroundColor: '#04060a',
+                        fontSize:        '11px',
+                        color:           '#94A3B8',
                       }}
                     >
-                      {signal}
+                      ELA visualization unavailable
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ ...FONT, fontSize: '10px', color: '#94A3B8', marginTop: '10px', lineHeight: 1.6 }}>
+                Bright areas indicate potential editing. Uniform compression = authentic. High variance = manipulated.
+              </div>
+            </div>
+
+            {/* Right — score, verdict, signals */}
+            <div style={{ border: BORDER, backgroundColor: '#07090e', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <ScoreArc score={result.manipulation_score} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span
+                    style={{
+                      ...FONT,
+                      fontSize:        '11px',
+                      fontWeight:      700,
+                      letterSpacing:   '0.12em',
+                      color:           '#000000',
+                      backgroundColor: verdictMeta.color,
+                      padding:         '4px 10px',
+                      alignSelf:       'flex-start',
+                    }}
+                  >
+                    {verdictMeta.label}
+                  </span>
+                  <span style={{ ...FONT, fontSize: '11px', color: '#CBD5E1' }}>
+                    CONFIDENCE: {Math.round(result.confidence * 100)}%
+                  </span>
+                  {result.source === 'mock' && (
+                    <span style={{ ...FONT, fontSize: '9px', color: '#F59E0B' }}>
+                      MOCK DATA — BACKEND UNREACHABLE
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {result.signals.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      ...FONT,
+                      fontSize:      '11px',
+                      letterSpacing: '0.18em',
+                      color:         '#94A3B8',
+                      marginBottom:  '8px',
+                    }}
+                  >
+                    FORENSIC SIGNALS
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {result.signals.map(signal => (
+                      <div
+                        key={signal}
+                        style={{
+                          ...FONT,
+                          fontSize:        '11px',
+                          color:           '#E2E8F0',
+                          backgroundColor: '#04060a',
+                          border:          BORDER,
+                          borderLeft:      `2px solid ${signalSeverityColor(signal)}`,
+                          padding:         '8px 10px',
+                          lineHeight:      1.5,
+                        }}
+                      >
+                        {signal}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.metadata_flags.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      ...FONT,
+                      fontSize:      '11px',
+                      letterSpacing: '0.18em',
+                      color:         '#94A3B8',
+                      marginBottom:  '8px',
+                    }}
+                  >
+                    METADATA FLAGS
+                  </div>
+                  {result.metadata_flags.map(flag => (
+                    <div key={flag} style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', padding: '2px 0' }}>
+                      • {flag}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {result.metadata_flags.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    ...FONT,
-                    fontSize:      '11px',
-                    letterSpacing: '0.18em',
-                    color:         '#94A3B8',
-                    marginBottom:  '8px',
-                  }}
-                >
-                  METADATA FLAGS
-                </div>
-                {result.metadata_flags.map(flag => (
-                  <div key={flag} style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', padding: '2px 0' }}>
-                    • {flag}
-                  </div>
-                ))}
+              <div style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', lineHeight: 1.7 }}>
+                {result.analysis_summary}
               </div>
-            )}
-
-            <div style={{ ...FONT, fontSize: '11px', color: '#CBD5E1', lineHeight: 1.7 }}>
-              {result.analysis_summary}
             </div>
           </div>
         </div>

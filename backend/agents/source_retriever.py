@@ -103,7 +103,8 @@ def _tokens(text: str) -> set[str]:
 
 def _is_relevant(query: str, item_text: str) -> tuple[bool, float]:
     """Keep only evidence with a meaningful topical/entity overlap."""
-    query_tokens = _tokens(query)
+    clean_q = clean_for_search(query)
+    query_tokens = _tokens(clean_q) if clean_q else _tokens(query)
     item_tokens = _tokens(item_text)
     if not query_tokens or not item_tokens:
         return False, 0.0
@@ -119,14 +120,14 @@ def _is_relevant(query: str, item_text: str) -> tuple[bool, float]:
         return True, 1.0
 
     # Prevent generic one-word matches from becoming evidence.
-    strong_overlap = {t for t in overlap if len(t) >= 4 or t.isdigit()}
+    strong_overlap = {t for t in overlap if len(t) >= 3 or t.isdigit()}
     overlap_count = len(overlap)
     coverage = overlap_count / max(1, len(query_tokens))
 
-    if len(query_tokens) <= 2:
+    if len(query_tokens) <= 3:
         keep = len(strong_overlap) >= 1
     else:
-        keep = len(strong_overlap) >= 2
+        keep = len(strong_overlap) >= 2 or coverage >= 0.25
 
     if not keep:
         return False, 0.0
@@ -135,12 +136,47 @@ def _is_relevant(query: str, item_text: str) -> tuple[bool, float]:
     return True, round(score, 3)
 
 
+def extract_handle_and_claim(query: str) -> tuple[Optional[str], str]:
+    """
+    Extract handle if query is in '@handle: claim' or '@handle claim' format,
+    and return (handle, claim_text).
+    """
+    q = query.strip()
+    m = re.match(r"^@([A-Za-z0-9_.]+)(?::\s*|\s+)(.+)$", q, re.DOTALL)
+    if m:
+        return m.group(1).strip(), m.group(2).strip()
+    if q.startswith("@") and len(q.split()) == 1:
+        return q.lstrip("@").strip(), ""
+    return None, q
+
+
+_CONVERSATIONAL_WORDS = {
+    "kuch", "seen", "scene", "hai", "kya", "like", "they", "are", "aur", "ka", "ki", "ke",
+    "ko", "se", "me", "par", "bhi", "tha", "thi", "the", "batao", "sach", "jhooth",
+    "bhai", "bro", "chal", "raha", "rahi", "bolo", "tell", "show", "check", "verify",
+    "anyone", "know", "rumor", "rumors", "about", "this", "that", "kisi", "ko", "pata",
+}
+
+
+def clean_for_search(text: str) -> str:
+    """Strip handles, hashtags, conversational filler, and punctuation to produce high-precision search keywords."""
+    cleaned = re.sub(r"@[A-Za-z0-9_.]+", " ", text)
+    cleaned = re.sub(r"#[A-Za-z0-9_]+", " ", cleaned)
+    cleaned = re.sub(r"[?!:\"\'\(\)\[\]\{\}/\\.,;]", " ", cleaned)
+    tokens = [w for w in cleaned.split() if w.lower() not in _CONVERSATIONAL_WORDS and len(w) > 1]
+    if not tokens:
+        tokens = cleaned.split()
+    return " ".join(tokens)
+
+
 class SourceRetriever:
     """Multi-source evidence retrieval engine with explicit provenance."""
 
     def retrieve(self, query: str) -> RetrievalResult:
         query_str = query.strip()
         now_iso = datetime.now(timezone.utc).isoformat()
+        handle, claim_text = extract_handle_and_claim(query_str)
+        search_query = clean_for_search(claim_text if claim_text else query_str)
         mode = self.detect_query_mode(query_str)
 
         evidence: List[EvidenceItem] = []
@@ -165,9 +201,9 @@ class SourceRetriever:
             statuses.append(SourceStatus("image", "Direct Image URL", "completed", 1, 50))
             return RetrievalResult(query_str, mode, evidence, statuses, 1, 1)
 
-        if mode == "handle":
-            handle = query_str.split()[0].lstrip("@").rstrip(":,;")
-            bs_evidence, bs_status = self._fetch_bluesky_handle_posts(handle, now_iso)
+        if mode == "handle" and not claim_text:
+            target_handle = handle or query_str.lstrip("@").rstrip(":,;")
+            bs_evidence, bs_status = self._fetch_bluesky_handle_posts(target_handle, now_iso)
             evidence.extend(bs_evidence)
             statuses.append(bs_status)
 
@@ -177,54 +213,45 @@ class SourceRetriever:
 
             return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
 
-        if mode == "text":
-            evidence.append(
-                EvidenceItem(
-                    id=hashlib.md5(query_str.encode()).hexdigest()[:8],
-                    source_type="user_text",
-                    source_name="Supplied Text Input",
-                    source_url="user://input",
-                    retrieved_at=now_iso,
-                    published_at=now_iso,
-                    author="Analyst Input",
-                    title="Supplied Text Claim",
-                    text=query_str,
-                    confidence=1.0,
-                    evidence_type="user_text",
-                )
+        # Always include the user query as supplied text input
+        evidence.append(
+            EvidenceItem(
+                id=hashlib.md5(query_str.encode()).hexdigest()[:8],
+                source_type="user_text",
+                source_name="Supplied Text Input",
+                source_url="user://input",
+                retrieved_at=now_iso,
+                published_at=now_iso,
+                author=f"@{handle}" if handle else "Analyst Input",
+                title="Supplied Text Claim",
+                text=query_str,
+                confidence=1.0,
+                evidence_type="user_text",
             )
-            statuses.append(SourceStatus("user_text", "Supplied Text Input", "completed", 1, 5))
+        )
+        statuses.append(SourceStatus("user_text", "Supplied Query Input", "completed", 1, 5))
 
-            fc_evidence, fc_status = self._fetch_fact_check_matches(query_str[:150], now_iso)
-            evidence.extend(fc_evidence)
-            statuses.append(fc_status)
-
-            news_evidence, news_status = self._fetch_google_news(query_str[:100], now_iso)
-            evidence.extend(news_evidence)
-            statuses.append(news_status)
-
-            return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
-
-        news_evidence, news_status = self._fetch_google_news(query_str, now_iso)
+        # Query Google News with cleaned claim text
+        news_query = search_query[:120] if search_query else query_str[:120]
+        news_evidence, news_status = self._fetch_google_news(news_query, now_iso)
         evidence.extend(news_evidence)
         statuses.append(news_status)
 
-        fc_evidence, fc_status = self._fetch_fact_check_matches(query_str, now_iso)
+        # Query Fact Checkers with cleaned claim text
+        fc_evidence, fc_status = self._fetch_fact_check_matches(news_query, now_iso)
         evidence.extend(fc_evidence)
         statuses.append(fc_status)
 
-        bs_evidence, bs_status = self._search_bluesky_posts(query_str, now_iso)
-        evidence.extend(bs_evidence)
-        statuses.append(bs_status)
+        # Query Public Social Chatter (Reddit / X / Bluesky) for real accounts
+        social_evidence, social_status = self._fetch_social_leads(news_query, now_iso)
+        evidence.extend(social_evidence)
+        statuses.append(social_status)
 
-        statuses.append(SourceStatus(
-            "x_twitter", "X / Twitter API", "unavailable", 0, 0,
-            "X API credentials unconfigured / rate-limited",
-        ))
-        statuses.append(SourceStatus(
-            "reddit", "Reddit API", "unavailable", 0, 0,
-            "Reddit API integration unconfigured",
-        ))
+        # If explicit handle was supplied, also check Bluesky API for it
+        if handle:
+            bs_evidence, bs_status = self._fetch_bluesky_handle_posts(handle, now_iso)
+            evidence.extend(bs_evidence)
+            statuses.append(bs_status)
 
         return RetrievalResult(query_str, mode, evidence, statuses, len(statuses), len(evidence))
 
@@ -235,7 +262,8 @@ class SourceRetriever:
             return "image_url"
         if re.match(r"^https?://", q, re.IGNORECASE):
             return "url"
-        if q.startswith("@") or (len(q.split()) == 1 and "." in q and "bsky" in q):
+        handle, claim = extract_handle_and_claim(q)
+        if handle and not claim:
             return "handle"
         if len(q.split()) > 20 or len(q) > 150:
             return "text"
@@ -317,6 +345,50 @@ class SourceRetriever:
             duration = int((datetime.now() - start).total_seconds() * 1000)
             logger.warning("Google news fetch failed: %s", exc)
             return [], SourceStatus("web_news", "Google News Web Search", "failed", 0, duration, str(exc))
+
+    def _fetch_social_leads(self, query: str, now_iso: str) -> tuple[List[EvidenceItem], SourceStatus]:
+        """Fetch real social media chatter and threads from Reddit & X/Twitter."""
+        start = datetime.now()
+        evidence: List[EvidenceItem] = []
+        try:
+            clean_q = clean_for_search(query)
+            encoded = urllib.parse.quote(f"site:reddit.com OR site:x.com {clean_q}")
+            url = GOOGLE_NEWS_RSS.format(query=encoded)
+            req = urllib.request.Request(url, headers={"User-Agent": "EchoSnare/1.0 (+https://echosnare.app)"})
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+                raw_data = resp.read()
+            if feedparser is not None:
+                feed = feedparser.parse(raw_data)
+                for entry in feed.entries[:5]:
+                    title = _clean_html(getattr(entry, "title", ""))
+                    link = getattr(entry, "link", "")
+                    summary = _clean_html(getattr(entry, "summary", "")) or title
+                    if not title or not link:
+                        continue
+                    platform = "Reddit" if "reddit" in link.lower() or "reddit" in title.lower() else "X"
+                    author_match = re.search(r"(@[A-Za-z0-9_]+|u/[A-Za-z0-9_]+|r/[A-Za-z0-9_]+)", title)
+                    author = author_match.group(1) if author_match else f"{platform} Community"
+                    evidence.append(
+                        EvidenceItem(
+                            id=hashlib.md5(link.encode()).hexdigest()[:8],
+                            source_type="bluesky",
+                            source_name=f"{platform} Public Chatter",
+                            source_url=link,
+                            retrieved_at=now_iso,
+                            published_at=getattr(entry, "published", now_iso),
+                            author=author,
+                            title=title,
+                            text=summary[:350],
+                            confidence=0.82,
+                            evidence_type="social_post",
+                        )
+                    )
+            duration = int((datetime.now() - start).total_seconds() * 1000)
+            status_code = "completed" if evidence else "limited"
+            return evidence, SourceStatus("bluesky", "Public Social Chatter (Reddit / X)", status_code, len(evidence), duration)
+        except Exception as exc:
+            duration = int((datetime.now() - start).total_seconds() * 1000)
+            return [], SourceStatus("bluesky", "Public Social Chatter (Reddit / X)", "limited", 0, duration, str(exc))
 
     def _fetch_fact_check_matches(self, query: str, now_iso: str) -> tuple[List[EvidenceItem], SourceStatus]:
         start = datetime.now()

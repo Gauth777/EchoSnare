@@ -549,7 +549,6 @@ export default function WhatsAppAnalyzer() {
                     </div>
                   )
                 })()}
-                )}
               </div>
             )}
           </div>

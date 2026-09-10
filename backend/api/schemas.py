@@ -115,7 +115,8 @@ class AccountIntelResponse(BaseModel):
 
 
 class DeepfakeAnalyzeRequest(BaseModel):
-    image_url: str = Field(..., min_length=1)
+    image_url: str | None = None
+    image_base64: str | None = None
 
 
 class DeepfakeAnalyzeResponse(BaseModel):
@@ -124,6 +125,7 @@ class DeepfakeAnalyzeResponse(BaseModel):
     metadata_summary: dict[str, Any]
     ai_generated_probability: float | None = None
     ai_model_used: str | None = None
+    gemini_forensics: dict[str, Any] | None = None
 
 
 class LanguageDetectRequest(BaseModel):
