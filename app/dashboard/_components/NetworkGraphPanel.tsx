@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import NetworkGraph from './NetworkGraph'
 import LiveFeedPanel from '@/components/LiveFeedPanel'
 import { campaigns as mockCampaigns } from '@/lib/mockData'
-import type { Campaign } from '@/types'
+import type { Campaign, InvestigationResult } from '@/types'
 
 const FONT: React.CSSProperties = {
   fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)',
