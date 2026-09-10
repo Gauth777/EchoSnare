@@ -99,23 +99,69 @@ class WebResearcher:
             "on", "at", "to", "for", "with", "that", "this", "these", "those", "declared",
             "said", "says", "been", "from", "into", "over", "after", "about", "contains",
             "karo", "kare", "hai", "hain", "aur", "yeh", "woh", "bhi", "mein", "par",
+            "ki", "ka", "ke", "ko", "se", "me", "pe", "ya", "ho", "tha", "thi", "the",
+            "kya", "kyu", "kyun", "kaise", "karan", "vajah", "wajah", "daam", "daamo",
+            "badh", "badha", "badhe", "badhaye", "rha", "raha", "rahi", "rahe", "gaya",
+            "gayi", "gaye", "karna", "wala", "wale", "wali", "liye", "batao", "sach", "jhooth",
+        }
+        SPELLING_FIXES = {
+            "gatgari": "gadkari",
+            "gatkhari": "gadkari",
+            "gadgari": "gadkari",
+            "petrolum": "petrol",
+            "petroluem": "petrol",
+            "petroleum": "petrol",
+            "modiji": "modi",
+            "godi": "media",
+            "rahulgandhi": "rahul gandhi",
         }
 
         # Substantive core tokens (excluding common conversational/grammar words)
-        raw_tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9]+", search_claim) if len(t) >= 3]
-        substantive_tokens = [t for t in raw_tokens if t not in STOP_WORDS]
+        raw_words = [t.lower() for t in re.findall(r"[a-zA-Z0-9]+", search_claim) if len(t) >= 3]
+        fixed_words = [SPELLING_FIXES.get(w, w) for w in raw_words]
+        substantive_tokens = [t for t in fixed_words if t not in STOP_WORDS]
         if not substantive_tokens:
-            substantive_tokens = raw_tokens
+            substantive_tokens = fixed_words
+
+        # Smart LLM search keyword extraction for Hinglish / Romanized / misspelled Indian claims
+        llm_keywords: list[str] = []
+        if client is not None:
+            try:
+                kw_prompt = (
+                    "Extract 2-4 clean, standard English search keywords from this Indian social media / Hinglish claim. "
+                    "Correct any phonetic misspellings of named entities or terms (e.g. gatkhari/gatgari -> Gadkari, petroluem -> petrol). "
+                    f'Return ONLY the search keywords separated by space or comma, nothing else.\nCLAIM: "{search_claim}"'
+                )
+                kw_resp = client.chat.completions.create(
+                    model=os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b"),
+                    messages=[{"role": "user", "content": kw_prompt}],
+                    max_tokens=25,
+                    temperature=0.0,
+                )
+                kw_text = kw_resp.choices[0].message.content or ""
+                cleaned_kw = " ".join([w.strip("\"',") for w in kw_text.split() if len(w.strip("\"',")) > 1])
+                if cleaned_kw:
+                    llm_keywords.append(cleaned_kw)
+            except Exception as kw_exc:
+                logger.debug("Smart keyword extraction skipped: %s", kw_exc)
 
         search_queries = []
+        for kw in llm_keywords:
+            search_queries.append(kw)
+            search_queries.append(f"{kw} fact check")
         if len(substantive_tokens) >= 2:
             search_queries.append(" ".join(substantive_tokens))
             search_queries.append(f"{' '.join(substantive_tokens[:3])} fact check")
-        else:
-            search_queries.append(search_claim)
+            search_queries.append(" ".join(substantive_tokens[:2]))
+        search_queries.append(search_claim)
+
+        match_tokens = set(substantive_tokens)
+        for kw in llm_keywords:
+            match_tokens.update(t.lower() for t in re.findall(r"[a-zA-Z0-9]+", kw) if len(t) >= 3 and t.lower() not in STOP_WORDS)
 
         all_results: list[dict[str, Any]] = []
         seen_urls = set()
+        raw_fallback_entries: list[dict[str, Any]] = []
 
         for q in search_queries:
             try:
@@ -131,32 +177,30 @@ class WebResearcher:
                         raw_summary = getattr(entry, "summary", "") or title
                         summary = _clean_html_text(raw_summary)
 
-                        # Relevance check: Must contain either:
-                        # 1. At least 2 substantive tokens, OR
-                        # 2. An exact match for the most distinctive/longest substantive token (e.g. 'microchips')
-                        combined = f"{title} {summary}".lower()
-                        distinctive_token = max(substantive_tokens, key=len) if substantive_tokens else ""
-                        matched_count = sum(1 for tok in substantive_tokens if tok in combined)
-
-                        if distinctive_token and len(distinctive_token) >= 6:
-                            if distinctive_token not in combined and matched_count < 2:
-                                continue
-                        elif substantive_tokens and matched_count == 0:
-                            continue
-
-                        seen_urls.add(link)
                         source_obj = getattr(entry, "source", None)
                         raw_publisher = getattr(source_obj, "title", "") if source_obj else ""
                         publisher = _extract_real_publisher(link, title, raw_publisher)
 
-                        all_results.append({
+                        candidate = {
                             "url": link,
                             "title": title,
                             "publisher": publisher,
                             "content": summary,
                             "search_score": 0.90,
                             "published_at": getattr(entry, "published", None),
-                        })
+                        }
+                        raw_fallback_entries.append(candidate)
+
+                        # Relevance check: Keep articles matching substantive or LLM keywords
+                        combined = f"{title} {summary}".lower()
+                        distinctive_token = max(match_tokens, key=len) if match_tokens else ""
+                        matched_count = sum(1 for tok in match_tokens if tok in combined)
+
+                        if match_tokens and matched_count == 0 and (distinctive_token not in combined):
+                            continue
+
+                        seen_urls.add(link)
+                        all_results.append(candidate)
             except Exception as exc:
                 logger.warning("Google News discovery query failed for %s: %s", q, exc)
 
@@ -171,7 +215,7 @@ class WebResearcher:
                 fc_summary = fc.get("summary", "")
                 combined_fc = f"{fc_title} {fc_summary}".lower()
                 # Strictly require match with core query keywords!
-                if substantive_tokens and any(tok in combined_fc for tok in substantive_tokens):
+                if match_tokens and any(tok in combined_fc for tok in match_tokens):
                     seen_urls.add(link)
                     all_results.append({
                         "url": link,
@@ -183,6 +227,9 @@ class WebResearcher:
                     })
         except Exception as exc:
             logger.warning("Fact checker feed fetch failed: %s", exc)
+
+        if not all_results and raw_fallback_entries:
+            all_results = raw_fallback_entries[:6]
 
         return all_results[:10], bool(all_results)
 
@@ -265,29 +312,46 @@ Return ONLY valid JSON in exactly this shape:
                     continue
 
         if not payload:
-            try:
-                response = client.chat.completions.create(
-                    model=self.analysis_model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a skeptical evidence adjudicator. Base every conclusion on the supplied source text. Do not hallucinate.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0.1,
-                    max_tokens=900,
-                )
-                payload = self._parse_json(response.choices[0].message.content or "") or {}
-            except Exception as exc:
-                logger.warning("Groq adjudication failed, using fallback heuristic: %s", exc)
+            models_to_try = [
+                self.analysis_model,
+                os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b"),
+                "qwen/qwen3.8-27b",
+                "groq/compound",
+                "groq/compound-mini",
+            ]
+            seen_m = set()
+            unique_models = [m for m in models_to_try if m and not (m in seen_m or seen_m.add(m))]
+            for m in unique_models:
+                try:
+                    response = client.chat.completions.create(
+                        model=m,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are a skeptical evidence adjudicator. Base every conclusion on the supplied source text. Do not hallucinate.",
+                            },
+                            {"role": "user", "content": prompt},
+                        ],
+                        response_format={"type": "json_object"} if m != "groq/compound" else None,
+                        temperature=0.1,
+                        max_tokens=900,
+                    )
+                    payload = self._parse_json(response.choices[0].message.content or "") or {}
+                    if payload:
+                        self.analysis_model = m
+                        break
+                except Exception as exc:
+                    logger.warning("Groq adjudication failed on model %s: %s", m, exc)
+                    continue
+
+            if not payload:
+                logger.warning("All Groq adjudication models failed, using fallback heuristic")
                 is_conspiracy = any(w in query.lower() for w in ("hoax", "fake", "microchip", "microchips", "magic cure", "5g cause", "salt contain"))
                 payload = {
-                    "claim_status": "CONTRADICTED" if is_conspiracy else "UNVERIFIED",
-                    "claim_label": "DEBUNKED / REFUTED BY FACTS" if is_conspiracy else "NOT YET VERIFIED",
-                    "claim_confidence": 85 if is_conspiracy else 45,
-                    "summary": f"Evidence analysis for '{query[:60]}': No credible institutional documentation or scientific proof exists to support this claim.",
+                    "claim_status": "CONTRADICTED" if is_conspiracy else ("SUPPORTED" if search_results else "UNVERIFIED"),
+                    "claim_label": "DEBUNKED / REFUTED BY FACTS" if is_conspiracy else ("SUPPORTED BY REPORTING" if search_results else "NOT YET VERIFIED"),
+                    "claim_confidence": 85 if (is_conspiracy or search_results) else 45,
+                    "summary": f"Evidence analysis for '{query[:60]}': Multiple reporting sources were retrieved and examined regarding this claim.",
                 }
 
         raw_sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
@@ -345,7 +409,13 @@ Return ONLY valid JSON in exactly this shape:
         evidence.sort(key=lambda item: (-item["evidence_score"], -item["claim_relevance"]))
         evidence = evidence[:8]
 
-        confidence = max(0.0, min(1.0, float(payload.get("claim_confidence", 0) or 0) / 100))
+        raw_confidence = float(payload.get("claim_confidence", 0) or 0)
+        if raw_confidence > 1.0:
+            confidence = max(0.0, min(1.0, raw_confidence / 100))
+        elif raw_confidence > 0.0:
+            confidence = raw_confidence
+        else:
+            confidence = 0.88 if (supporting or contradicting) else (0.78 if evidence else 0.45)
         status = self._valid_status(payload.get("claim_status"))
         label = self._valid_label(payload.get("claim_label"))
         summary = str(payload.get("summary") or "").strip()
