@@ -861,32 +861,42 @@ def _generate_evidence_dossier(
 
     api_key = os.getenv("GROQ_API_KEY")
     if api_key and api_key != "your_key" and Groq is not None:
-        try:
-            client = Groq(api_key=api_key)
-            prompt = (
-                f"You are a Senior Threat Intelligence Officer at ECHOSNARE. Synthesize an evidence-backed dossier for query: '{query}'.\n"
-                f"RETRIEVED EVIDENCE:\n{evidence_text}\n\n"
-                f"THREAT ASSESSMENT: {alert.threat_type} (Severity Score: {threat_score}/100).\n\n"
-                f"RULES:\n"
-                f"1. Base your summary STRICTLY on the retrieved evidence provided.\n"
-                f"2. Cite evidence sources by name (e.g. 'According to AltNews...').\n"
-                f"3. Do NOT invent claims not supported by retrieved evidence.\n"
-                f"4. Keep response under 150 words in a professional intelligence dossier tone."
-            )
-            resp = client.chat.completions.create(
-                model=os.getenv("GROQ_MODEL", "groq/compound-mini"),
-                temperature=0.2,
-                max_tokens=250,
-                messages=[
-                    {"role": "system", "content": "You are a professional threat intelligence analyst. Provide concise evidence-backed dossiers."},
-                    {"role": "user", "content": prompt},
-                ]
-            )
-            content = resp.choices[0].message.content
-            if content and len(content.strip()) > 20:
-                return content.strip()
-        except Exception as exc:
-            logger.warning("Groq dossier synthesis fallback: %s", exc)
+        client = Groq(api_key=api_key)
+        prompt = (
+            f"You are a Senior Threat Intelligence Officer at ECHOSNARE. Synthesize an evidence-backed dossier for query: '{query}'.\n"
+            f"RETRIEVED EVIDENCE:\n{evidence_text}\n\n"
+            f"THREAT ASSESSMENT: {alert.threat_type} (Severity Score: {threat_score}/100).\n\n"
+            f"RULES:\n"
+            f"1. Base your summary STRICTLY on the retrieved evidence provided.\n"
+            f"2. Cite evidence sources by name (e.g. 'According to AltNews...').\n"
+            f"3. Do NOT invent claims not supported by retrieved evidence.\n"
+            f"4. Keep response under 150 words in a professional intelligence dossier tone."
+        )
+        models_to_try = [
+            os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b"),
+            "qwen/qwen3.8-27b",
+            "groq/compound",
+            "groq/compound-mini",
+        ]
+        seen_m = set()
+        unique_models = [m for m in models_to_try if m and not (m in seen_m or seen_m.add(m))]
+        for m in unique_models:
+            try:
+                resp = client.chat.completions.create(
+                    model=m,
+                    temperature=0.2,
+                    max_tokens=250,
+                    messages=[
+                        {"role": "system", "content": "You are a professional threat intelligence analyst. Provide concise evidence-backed dossiers."},
+                        {"role": "user", "content": prompt},
+                    ]
+                )
+                content = resp.choices[0].message.content
+                if content and len(content.strip()) > 20:
+                    return content.strip()
+            except Exception as exc:
+                logger.warning("Groq dossier synthesis fallback on model %s: %s", m, exc)
+                continue
 
     top_item = evidence[0]
     return (

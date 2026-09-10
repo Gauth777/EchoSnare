@@ -17,7 +17,7 @@ FACT_CHECKER_FEEDS = [
     # boomlive.in/feed/ serves an empty RSS shell; the fact-check section feed is the live one
     {"name": "Boom",        "url": "https://www.boomlive.in/fact-check/feed",     "color": "yellow"},
     {"name": "FactChecker", "url": "https://www.factchecker.in/feed/",            "color": "blue"},
-    {"name": "TheQuint",    "url": "https://www.thequint.com/news/webqoof/feed",  "color": "purple"},
+    {"name": "TheQuint",    "url": "https://news.google.com/rss/search?q=site:thequint.com/news/webqoof&hl=en-IN&gl=IN&ceid=IN:en", "color": "purple"},
 ]
 
 _FETCH_TIMEOUT_SECONDS = 8
@@ -84,8 +84,7 @@ def fetch_live_claims() -> List[Dict]:
                     "keywords": [],
                 }
                 claims.append(claim)
-        except Exception as e:
-            print(f"Failed to fetch {feed_source['name']}: {e}")
+        except Exception:
             continue
     return claims
 

@@ -28,7 +28,7 @@ class ContentAnalyzer:
     512MB free tier where torch/transformers would OOM.
     """
 
-    def __init__(self, model: str = "groq/compound-mini") -> None:
+    def __init__(self, model: str = "qwen/qwen3.8-27b") -> None:
         self.model = os.getenv("GROQ_MODEL", model)
         self._client = self._build_client()
 
@@ -98,33 +98,40 @@ class ContentAnalyzer:
 
         if self._client is None:
             return self._lexical_score(text)
-        try:
-            response = self._client.chat.completions.create(
-                model=self.model,
-                temperature=0.1,
-                max_tokens=120,
-                response_format={"type": "json_object"},
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a misinformation detection engine for Indian social media "
-                            "(English, Hindi, and Hinglish). Judge how likely a piece of text is "
-                            "coordinated misinformation, a manipulative viral forward, or a "
-                            "fabricated claim. Reply ONLY with strict JSON: "
-                            '{"misinformation_score": <integer 0-100>, "reason": "<short phrase>"}. '
-                            "0 = clearly benign/factual, 100 = almost certainly misinformation."
-                        ),
-                    },
-                    {"role": "user", "content": text[:2000]},
-                ],
-            )
-            content = response.choices[0].message.content or "{}"
-            parsed = json.loads(content)
-            score = float(parsed.get("misinformation_score", self._lexical_score(text)))
-            return max(0.0, min(100.0, score))
-        except Exception:
-            return self._lexical_score(text)
+
+        models = [self.model, "qwen/qwen3.8-27b", "groq/compound", "groq/compound-mini"]
+        seen_m = set()
+        unique_models = [m for m in models if m and not (m in seen_m or seen_m.add(m))]
+        for m in unique_models:
+            try:
+                response = self._client.chat.completions.create(
+                    model=m,
+                    temperature=0.1,
+                    max_tokens=120,
+                    response_format={"type": "json_object"} if m != "groq/compound" else None,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a misinformation detection engine for Indian social media "
+                                "(English, Hindi, and Hinglish). Judge how likely a piece of text is "
+                                "coordinated misinformation, a manipulative viral forward, or a "
+                                "fabricated claim. Reply ONLY with strict JSON: "
+                                '{"misinformation_score": <integer 0-100>, "reason": "<short phrase>"}. '
+                                "0 = clearly benign/factual, 100 = almost certainly misinformation."
+                            ),
+                        },
+                        {"role": "user", "content": text[:2000]},
+                    ],
+                )
+                content = response.choices[0].message.content or "{}"
+                parsed = json.loads(content)
+                score = float(parsed.get("misinformation_score", self._lexical_score(text)))
+                return max(0.0, min(100.0, score))
+            except Exception:
+                continue
+
+        return self._lexical_score(text)
 
     @staticmethod
     def _lexical_score(text: str) -> float:

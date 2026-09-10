@@ -154,7 +154,15 @@ _CONVERSATIONAL_WORDS = {
     "kuch", "seen", "scene", "hai", "kya", "like", "they", "are", "aur", "ka", "ki", "ke",
     "ko", "se", "me", "par", "bhi", "tha", "thi", "the", "batao", "sach", "jhooth",
     "bhai", "bro", "chal", "raha", "rahi", "bolo", "tell", "show", "check", "verify",
-    "anyone", "know", "rumor", "rumors", "about", "this", "that", "kisi", "ko", "pata",
+    "anyone", "know", "rumor", "rumors", "about", "this", "that", "kisi", "pata",
+    "karan", "vajah", "wajah", "daam", "daamo", "badh", "badha", "badhe", "rha", "rahe",
+}
+
+_SPELLING_FIXES = {
+    "gatgari": "gadkari",
+    "petrolum": "petrol",
+    "modiji": "modi",
+    "godi": "media",
 }
 
 
@@ -163,7 +171,11 @@ def clean_for_search(text: str) -> str:
     cleaned = re.sub(r"@[A-Za-z0-9_.]+", " ", text)
     cleaned = re.sub(r"#[A-Za-z0-9_]+", " ", cleaned)
     cleaned = re.sub(r"[?!:\"\'\(\)\[\]\{\}/\\.,;]", " ", cleaned)
-    tokens = [w for w in cleaned.split() if w.lower() not in _CONVERSATIONAL_WORDS and len(w) > 1]
+    tokens = []
+    for w in cleaned.split():
+        fixed = _SPELLING_FIXES.get(w.lower(), w.lower())
+        if fixed not in _CONVERSATIONAL_WORDS and len(fixed) > 1:
+            tokens.append(fixed)
     if not tokens:
         tokens = cleaned.split()
     return " ".join(tokens)
