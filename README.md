@@ -88,6 +88,3 @@ types/        TypeScript interface definitions
 
 ---
 
-## 📜 Attribution
-
-ECHOSNARE is built from the open-source ShadowTrace codebase under the MIT License (`LICENSE`).
