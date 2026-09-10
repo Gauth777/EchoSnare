@@ -124,6 +124,22 @@ def analyze_account_intel(payload: AccountIntelAnalyzeRequest) -> AccountIntelRe
         record_agent("TemporalCoordinator")
         record_agent("LinguisticFingerprinter")
         record_agent("AIOperationDetector")
+        try:
+            from db.search_logger import log_search
+            ai_score = int(getattr(ai_operation, "confidence_score", 50) if ai_operation else 50)
+            log_search(
+                query=", ".join(payload.handles),
+                mode="handle",
+                threat_score=ai_score,
+                risk_level="HIGH" if ai_score > 70 else "MED" if ai_score > 40 else "LOW",
+                narrative_category="Account Intelligence Analysis",
+                evidence_count=len(payload.handles),
+                duration_ms=0,
+                status="completed",
+                accounts=payload.handles,
+            )
+        except Exception as log_exc:
+            logger.warning("Failed to log account intel search: %s", log_exc)
         return AccountIntelResponse(
             temporal=TemporalCoordinationResponse(**asdict(temporal)),
             linguistic=LinguisticFingerprintResponse(**asdict(linguistic)),
@@ -148,6 +164,22 @@ def analyze_deepfake(payload: DeepfakeAnalyzeRequest) -> DeepfakeAnalyzeResponse
             image_base64=payload.image_base64,
         )
         record_agent("DeepfakeDetector")
+        try:
+            from db.search_logger import log_search
+            score = int(getattr(result, "final_manipulation_score", 0))
+            log_search(
+                query=payload.image_url or "Uploaded Base64 Image",
+                mode="image",
+                threat_score=score,
+                risk_level="HIGH" if score > 70 else "MED" if score > 40 else "LOW",
+                narrative_category="Image & Deepfake Forensics",
+                evidence_count=1,
+                duration_ms=0,
+                status="completed",
+                details={"verdict": getattr(result, "verdict", "LOW")},
+            )
+        except Exception as log_exc:
+            logger.warning("Failed to log deepfake search: %s", log_exc)
         return DeepfakeAnalyzeResponse(**asdict(result))
     except Exception as exc:
         logger.exception("Deepfake analysis failed: %s", exc)
@@ -263,6 +295,26 @@ async def analyze_whatsapp_forward(request: dict) -> dict[str, Any]:
         verdict = f"Suspicious content. {flag_count} warning signals detected." if flag_count else "Suspicious content — AI content analysis raised concerns."
     else:
         verdict = "Low misinformation indicators. Content appears relatively benign."
+
+    try:
+        from db.search_logger import log_search
+        log_search(
+            query=wa_result.claim_extracted or text[:120],
+            mode="whatsapp",
+            threat_score=final_score,
+            risk_level=risk_level,
+            narrative_category="WhatsApp Forward Misinformation",
+            evidence_count=len(wa_result.red_flags),
+            duration_ms=0,
+            status="completed",
+            details={
+                "is_forward": wa_result.is_forward,
+                "forward_depth": wa_result.forward_depth,
+                "red_flags": wa_result.red_flags,
+            },
+        )
+    except Exception as log_exc:
+        logger.warning("Failed to log whatsapp search: %s", log_exc)
 
     return {
         "is_forward": wa_result.is_forward,
@@ -812,8 +864,7 @@ async def investigate(request: dict) -> dict[str, Any]:
         "severity": risk_level,
         "explanation": getattr(alert, "narrative", synthesis_dossier[:250]),
     }
-
-    return {
+    result_payload = {
         "query": query,
         "query_mode": mode,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -836,6 +887,8 @@ async def investigate(request: dict) -> dict[str, Any]:
         },
         "synthesis_dossier": synthesis_dossier,
     }
+
+    return result_payload
 
 
 def _generate_evidence_dossier(
@@ -905,4 +958,38 @@ def _generate_evidence_dossier(
         f"{len(evidence)} total evidence item(s) retrieved. Combined threat score evaluated at {threat_score}/100 ({alert.threat_type}). "
         f"Narrative indicators align with {top_item.source_type} propagation patterns."
     )
+
+
+# ── Search & Audit Logging Endpoints ──────────────────────────────────────────
+
+
+@router.get("/searches")
+def get_searches(limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
+    from db.search_logger import get_recent_searches
+    return get_recent_searches(limit=limit, offset=offset)
+
+
+@router.get("/searches/metrics")
+def get_searches_metrics() -> dict[str, Any]:
+    from db.search_logger import get_search_metrics
+    return get_search_metrics()
+
+
+@router.post("/searches/log")
+def create_search_log(payload: dict[str, Any]) -> dict[str, Any]:
+    from db.search_logger import log_search
+    return log_search(
+        query=str(payload.get("query") or ""),
+        mode=str(payload.get("mode") or "topic"),
+        threat_score=int(payload.get("threat_score") or 0),
+        risk_level=str(payload.get("risk_level") or "LOW"),
+        narrative_category=str(payload.get("narrative_category") or "General Investigation"),
+        evidence_count=int(payload.get("evidence_count") or 0),
+        duration_ms=int(payload.get("duration_ms") or 0),
+        status=str(payload.get("status") or "completed"),
+        details=payload.get("details"),
+        accounts=payload.get("accounts"),
+        campaign_id=payload.get("campaign_id"),
+    )
+
 

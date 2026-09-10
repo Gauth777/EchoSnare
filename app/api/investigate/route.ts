@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { groq } from '@/lib/groq'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
-const BACKEND = process.env.BACKEND_API_URL ?? 'http://localhost:8000'
+const BACKEND = process.env.BACKEND_API_URL ?? 'http://127.0.0.1:8000'
 
 export async function POST(request: Request) {
   const body = await request.json()
@@ -14,13 +14,14 @@ export async function POST(request: Request) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
-      signal:  AbortSignal.timeout(55000),
+      signal:  AbortSignal.timeout(120000),
     })
     if (response.ok) {
       return NextResponse.json(await response.json())
     }
-  } catch {
-    // Backend offline — proceed to fallback response
+    console.error(`Backend returned HTTP ${response.status}:`, await response.text())
+  } catch (err) {
+    console.error('Fetch to backend /investigate failed:', err)
   }
 
   // Fallback response structure if backend is not running

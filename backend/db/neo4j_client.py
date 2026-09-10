@@ -11,7 +11,7 @@ from neo4j import GraphDatabase
 logger = logging.getLogger(__name__)
 
 _driver = None
-_use_http_fallback = False
+_use_http_fallback = True
 
 
 def _get_http_query_url() -> str | None:

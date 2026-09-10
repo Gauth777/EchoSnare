@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import type { InvestigationResult } from '@/types'
 
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-jetbrains-mono, "Fira Code", monospace)' }
@@ -23,6 +24,17 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
   const [mode, setMode] = useState<'topic' | 'text'>('topic')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [recentSearches, setRecentSearches] = useState<any[]>([])
+
+  async function loadRecentSearches() {
+    try {
+      const res = await fetch('/api/searches?limit=4')
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data)) setRecentSearches(data)
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     try {
@@ -31,6 +43,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
       if (savedQuery) setQuery(savedQuery)
       if (savedMode === 'topic' || savedMode === 'text') setMode(savedMode)
     } catch {}
+    loadRecentSearches()
   }, [])
 
   async function handleInvestigate(selectedQuery?: string) {
@@ -64,6 +77,7 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
       if (onInvestigationComplete) {
         onInvestigationComplete(data)
       }
+      loadRecentSearches()
     } catch {
       setError('Investigation failed. Verify Python backend status and try again.')
     } finally {
@@ -189,6 +203,56 @@ export default function AnalyzePanel({ onInvestigationComplete }: Props) {
             </button>
           ))}
         </div>
+
+        {recentSearches.length > 0 && (
+          <div style={{ ...MONO, display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, color: '#00D4AA', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 6px #00D4AA' }} />
+              LIVE DATABASE LOGS:
+            </span>
+            {recentSearches.slice(0, 3).map(item => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setQuery(item.query)
+                  setMode(item.query_mode === 'text' ? 'text' : 'topic')
+                  handleInvestigate(item.query)
+                }}
+                title={item.query}
+                style={{
+                  ...MONO,
+                  border: '1px solid #1e293b',
+                  background: '#090d15',
+                  color: item.risk_level === 'HIGH' ? '#EF4444' : item.risk_level === 'MED' ? '#F59E0B' : '#10B981',
+                  padding: '3px 8px',
+                  fontSize: 9,
+                  cursor: 'pointer',
+                  maxWidth: 220,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  borderRadius: 2,
+                }}
+              >
+                [{item.risk_level || 'LOG'}] {item.query}
+              </button>
+            ))}
+            <Link
+              href="/dashboard/logs"
+              style={{
+                ...MONO,
+                fontSize: 9,
+                color: '#60A5FA',
+                textDecoration: 'none',
+                padding: '3px 6px',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: 2,
+              }}
+            >
+              VIEW ALL REAL-TIME LOGS →
+            </Link>
+          </div>
+        )}
 
         <div style={{ ...MONO, display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 10, fontSize: 10, color: '#00D4AA', opacity: 0.9, lineHeight: 1.5 }}>
           <span>💡</span>

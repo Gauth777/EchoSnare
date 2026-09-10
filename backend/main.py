@@ -265,6 +265,35 @@ class InvestigationSanitizerMiddleware(BaseHTTPMiddleware):
             except Exception as exc:
                 print(f"[investigation] live research unavailable: {exc}")
             payload = _sanitize_investigation_payload(payload, research)
+
+            try:
+                from db.search_logger import log_search
+                stages = payload.get("stages") or []
+                total_duration = sum(int(s.get("duration_ms") or 0) for s in stages)
+                synthesis_dossier = payload.get("synthesis_dossier") or (research.summary if research else "") or ""
+                evidence_list = payload.get("evidence") or []
+                claim_assessment = payload.get("claim_assessment") or {}
+                log_search(
+                    query=payload.get("query", ""),
+                    mode=payload.get("query_mode", "topic"),
+                    threat_score=int(payload.get("threat_score") or 0),
+                    risk_level=str(payload.get("risk_level") or "LOW"),
+                    narrative_category=str(payload.get("narrative_category") or "General Investigation"),
+                    evidence_count=len(evidence_list),
+                    duration_ms=total_duration,
+                    status="completed",
+                    accounts=payload.get("accounts_detected") or [],
+                    synthesis_dossier=synthesis_dossier,
+                    evidence=evidence_list,
+                    claim_assessment=claim_assessment,
+                    details={
+                        "score_basis": payload.get("score_basis", ""),
+                        "claim_assessment": claim_assessment,
+                    },
+                )
+            except Exception as log_exc:
+                print(f"[investigation] search logger sync failed: {log_exc}")
+
         return JSONResponse(content=payload, status_code=response.status_code)
 
 
@@ -298,3 +327,9 @@ def _safe_seed() -> None:
 @app.on_event("startup")
 async def startup() -> None:
     threading.Thread(target=_safe_seed, daemon=True).start()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+

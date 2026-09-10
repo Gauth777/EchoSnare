@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
   { label: 'Overview', href: '/dashboard' },
+  { label: 'Audit Logs', href: '/dashboard/logs' },
   { label: 'WhatsApp Intel', href: '/dashboard/whatsapp' },
   { label: 'Image Forensics', href: '/dashboard/image-forensics' },
   { label: 'Account Intel', href: '/dashboard/account-intel' },
