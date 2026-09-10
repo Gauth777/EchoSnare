@@ -27,42 +27,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Run the local WhatsApp analyzer and the same live investigation engine in parallel.
-    // The investigation score becomes the canonical misinformation/threat score so
-    // WhatsApp Intel and Overview do not present two different scales for the same claim.
-    const [waResponse, investigationResponse] = await Promise.all([
-      fetch(`${BACKEND}/whatsapp/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(55000),
-      }),
-      fetch(`${BACKEND}/investigate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: body?.text ?? body?.query ?? '', mode: 'text' }),
-        signal: AbortSignal.timeout(55000),
-      }),
-    ])
+    const waResponse = await fetch(`${BACKEND}/whatsapp/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12000),
+    })
 
     if (!waResponse.ok) throw new Error('WhatsApp analyzer unavailable')
     const result = await waResponse.json()
-
-    if (investigationResponse.ok) {
-      const investigation = await investigationResponse.json()
-      const canonicalScore = Number(investigation.threat_score ?? investigation.misinformation_score)
-      const canonicalRisk = investigation.risk_level
-
-      if (Number.isFinite(canonicalScore)) {
-        result.misinformation_score = canonicalScore
-        result.risk_level = canonicalRisk ?? result.risk_level
-      }
-
-      if (investigation.claim_assessment?.label) {
-        result.verdict = `${investigation.claim_assessment.label}. ${investigation.claim_assessment.explanation ?? ''}`.trim()
-      }
-    }
-
     return NextResponse.json(result)
   } catch {
     return NextResponse.json(MOCK_RESULT)

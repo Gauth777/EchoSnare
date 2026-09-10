@@ -42,16 +42,36 @@ function statusBadge(status: string) {
 }
 
 function claimPresentation(assessment?: ClaimAssessment) {
-  if (!assessment) return { label: 'ASSESSMENT UNAVAILABLE', color: '#64748B' }
+  if (!assessment) return { 
+    label: 'ASSESSMENT UNAVAILABLE', 
+    subtitle: 'No claim verification data recorded.',
+    color: '#64748B' 
+  }
   switch (assessment.status) {
     case 'CONTRADICTED':
-      return { label: 'NOT SUPPORTED', color: '#EF4444' }
+      return { 
+        label: 'DEBUNKED / REFUTED BY FACTS', 
+        subtitle: 'The analyzed claim is contradicted or proven false by verified fact-check sources.',
+        color: '#EF4444' 
+      }
     case 'PARTIALLY_SUPPORTED':
-      return { label: 'SUPPORTED BY REPORTING', color: '#F59E0B' }
+      return { 
+        label: 'SUPPORTED BY REPORTING', 
+        subtitle: 'Consistent with news reporting, but key details or context remain unverified.',
+        color: '#F59E0B' 
+      }
     case 'SUPPORTED':
-      return { label: 'SUPPORTED', color: '#34D399' }
+      return { 
+        label: 'SUPPORTED BY EVIDENCE', 
+        subtitle: 'Corroborated by credible reporting and verified sources.',
+        color: '#34D399' 
+      }
     default:
-      return { label: 'NOT YET VERIFIED', color: '#94A3B8' }
+      return { 
+        label: 'NOT YET VERIFIED', 
+        subtitle: 'No conclusive evidence found to confirm or refute.',
+        color: '#94A3B8' 
+      }
   }
 }
 
@@ -73,17 +93,29 @@ export default function EvidencePanel({ evidence, sourceStatuses }: Props) {
   return (
     <div style={{ padding: 20, background: '#07090e', borderBottom: BORDER }}>
       {claimAssessment && (
-        <div style={{ marginBottom: 18, padding: '12px 14px', background: '#04060a', border: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ ...MONO, fontSize: 9, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 5 }}>
-              CLAIM ASSESSMENT
+        <div style={{ marginBottom: 18, padding: '14px 16px', background: '#04060a', border: BORDER, borderRadius: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
+            <div>
+              <div style={{ ...MONO, fontSize: 9, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.12em', marginBottom: 4 }}>
+                CLAIM VERDICT & EVIDENCE ADJUDICATION
+              </div>
+              <div style={{ ...MONO, fontSize: 15, fontWeight: 800, color: claim.color }}>
+                {claim.label}
+              </div>
             </div>
-            <div style={{ ...MONO, fontSize: 16, fontWeight: 800, color: claim.color }}>
-              {claim.label}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ ...MONO, fontSize: 10, color: '#34D399', background: 'rgba(52, 211, 153, 0.1)', padding: '3px 8px', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: 2 }}>
+                {Math.round(claimAssessment.confidence * 100)}% evidence confidence
+              </div>
+              {claimAssessment.contradictory_sources > 0 && (
+                <div style={{ ...MONO, fontSize: 10, color: '#F87171', background: 'rgba(239, 68, 68, 0.1)', padding: '3px 8px', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 2 }}>
+                  {claimAssessment.contradictory_sources} debunking source{claimAssessment.contradictory_sources > 1 ? 's' : ''}
+                </div>
+              )}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ ...MONO, fontSize: 10, color: '#F4F7FB' }}>{Math.round(claimAssessment.confidence * 100)}% evidence confidence</div>
+          <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5, marginTop: 4 }}>
+            {claimAssessment.explanation || claim.subtitle}
           </div>
         </div>
       )}
