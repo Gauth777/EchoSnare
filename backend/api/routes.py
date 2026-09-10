@@ -143,7 +143,10 @@ def get_account_intel(handle: str) -> AccountIntelResponse:
 @router.post("/deepfake/analyze", response_model=DeepfakeAnalyzeResponse)
 def analyze_deepfake(payload: DeepfakeAnalyzeRequest) -> DeepfakeAnalyzeResponse:
     try:
-        result = DeepfakeDetector().analyze(payload.image_url)
+        result = DeepfakeDetector().analyze(
+            image_url=payload.image_url,
+            image_base64=payload.image_base64,
+        )
         record_agent("DeepfakeDetector")
         return DeepfakeAnalyzeResponse(**asdict(result))
     except Exception as exc:

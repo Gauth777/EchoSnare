@@ -7,12 +7,22 @@ import { useState, useEffect, useRef } from 'react'
 type Severity = 'HIGH' | 'MED' | 'LOW'
 
 interface AlertItem {
-  id:       string
-  severity: Severity
-  message:  string
-  campaign: string
-  time:     string
-  isNew:    boolean
+  id:        string
+  severity:  Severity
+  message:   string
+  campaign:  string
+  timestamp: number
+  isNew:     boolean
+}
+
+function formatRelativeTime(ts: number): string {
+  const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000))
+  if (diffSec < 35) return 'just now'
+  if (diffSec < 90) return '1m ago'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  return `${diffHr}h ago`
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -27,36 +37,36 @@ const SEV_COLOR: Record<Severity, string> = {
   LOW:  '#00D4AA',
 }
 
-const INITIAL_ALERTS: Omit<AlertItem, 'isNew'>[] = [
+const INITIAL_ALERTS_DATA: Omit<AlertItem, 'isNew' | 'timestamp'>[] = [
   {
     id: 'i1', severity: 'HIGH',
     message:  'Coordinated burst detected — 847 accounts sharing identical narrative within 4 min window',
-    campaign: 'Operation Pulse', time: '2m ago',
+    campaign: 'Operation Pulse',
   },
   {
     id: 'i2', severity: 'HIGH',
     message:  'State-level pattern identified — 94% confidence',
-    campaign: 'Operation Pulse', time: '23m ago',
+    campaign: 'Operation Pulse',
   },
   {
     id: 'i3', severity: 'MED',
     message:  'Deepfake image flagged in 3 active campaigns',
-    campaign: 'MedFear', time: '11m ago',
+    campaign: 'MedFear',
   },
   {
     id: 'i4', severity: 'MED',
     message:  'Health misinfo cluster expanding — 312 accounts',
-    campaign: 'MedFear', time: '45m ago',
+    campaign: 'MedFear',
   },
   {
     id: 'i5', severity: 'LOW',
     message:  'Bot cluster expanding — monitoring active',
-    campaign: 'ReviewStorm', time: '1h ago',
+    campaign: 'ReviewStorm',
   },
 ]
 
 // 8-item rotating pool for live simulation
-const ALERT_POOL: Omit<AlertItem, 'id' | 'time' | 'isNew'>[] = [
+const ALERT_POOL: Omit<AlertItem, 'id' | 'timestamp' | 'isNew'>[] = [
   { severity: 'HIGH', message: 'Cross-platform amplification surge — 3 platforms synchronised',      campaign: 'Operation Pulse' },
   { severity: 'HIGH', message: 'Narrative velocity spike — 3.4× above 24h baseline',                campaign: 'Operation Pulse' },
   { severity: 'MED',  message: 'New amplifier cluster joined — 12 accounts added in 6 min',          campaign: 'Operation Pulse' },
@@ -70,10 +80,16 @@ const ALERT_POOL: Omit<AlertItem, 'id' | 'time' | 'isNew'>[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AlertFeed() {
-  const [alerts, setAlerts] = useState<AlertItem[]>(
-    INITIAL_ALERTS.map(a => ({ ...a, isNew: false })),
-  )
+  const [alerts, setAlerts] = useState<AlertItem[]>(() => {
+    const baseOffsets = [2 * 60 * 1000, 11 * 60 * 1000, 23 * 60 * 1000, 45 * 60 * 1000, 75 * 60 * 1000]
+    return INITIAL_ALERTS_DATA.map((a, i) => ({
+      ...a,
+      timestamp: Date.now() - (baseOffsets[i] || 60000),
+      isNew: false,
+    }))
+  })
   const [isLoading, setIsLoading] = useState(true)
+  const [, setTick] = useState(0)
 
   const poolRef     = useRef(0)
   const counterRef  = useRef(0)
@@ -84,6 +100,14 @@ export default function AlertFeed() {
     return () => clearTimeout(t)
   }, [])
 
+  // Periodically refresh relative times
+  useEffect(() => {
+    const tickInterval = setInterval(() => {
+      setTick(prev => prev + 1)
+    }, 10000)
+    return () => clearInterval(tickInterval)
+  }, [])
+
   useEffect(() => {
     const interval = setInterval(() => {
       const template = ALERT_POOL[poolRef.current % ALERT_POOL.length]
@@ -91,7 +115,7 @@ export default function AlertFeed() {
       const newId = `live-${Date.now()}-${++counterRef.current}`
 
       setAlerts(prev => {
-        const next: AlertItem = { ...template, id: newId, time: 'just now', isNew: true }
+        const next: AlertItem = { ...template, id: newId, timestamp: Date.now(), isNew: true }
         return [next, ...prev].slice(0, 20)
       })
 
@@ -113,8 +137,8 @@ export default function AlertFeed() {
       exported_at: new Date().toISOString(),
       source:      'EchoSnare v1.0.0',
       total:       alerts.length,
-      alerts: alerts.map(({ id, severity, message, campaign, time }) => ({
-        id, severity, message, campaign, timestamp: time,
+      alerts: alerts.map(({ id, severity, message, campaign, timestamp }) => ({
+        id, severity, message, campaign, timestamp: formatRelativeTime(timestamp),
       })),
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -224,7 +248,7 @@ export default function AlertFeed() {
                 {alert.campaign}
               </span>
               <span style={{ fontSize: '9px', color: '#94A3B8', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {alert.time}
+                {formatRelativeTime(alert.timestamp)}
               </span>
             </div>
 

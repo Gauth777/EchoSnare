@@ -18,7 +18,14 @@ export default function InvestigationWorkflow({ stages }: Props) {
         AUTOMATED PIPELINE EXECUTION STAGES
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stages.length}, 1fr)`, gap: 8 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 8,
+          width: '100%',
+        }}
+      >
         {stages.map((st, idx) => {
           const isDone = st.status === 'completed'
           const isLimited = st.status === 'limited'
