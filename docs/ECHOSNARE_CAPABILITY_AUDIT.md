@@ -2,8 +2,8 @@
 
 **Document Version:** 1.0.0  
 **Date:** September 8, 2026  
-**Auditor:** Antigravity AI Engine (Google DeepMind Team)  
-**Target Repository:** Gauth777/EchoSnare  
+**Repository:** Gauth777/EchoSnare  
+**Purpose:** Internal engineering capability review and request-flow analysis  
 
 ---
 
@@ -11,7 +11,7 @@
 
 EchoSnare was designed as a hybrid Next.js + FastAPI + Neo4j application for detecting coordinated online misinformation campaigns. While the codebase contains solid foundation modules (Neo4j graph schemas, D3 force-directed visualizers, WhatsApp pattern heuristics, PIL-based image Error Level Analysis, and Groq LLM integrations), **the prior UI presented several critical misrepresentations regarding its live analytical capabilities.**
 
-This audit presents an unvarnished forensic analysis of what the system can genuinely perform versus what was simulated, static, or LLM-hallucinated.
+This internal engineering review documents what the system can genuinely perform versus what was simulated, static, or model-generated at the time of review.
 
 ---
 
